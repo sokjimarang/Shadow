@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 import pytest
+from pynput.mouse import Button, Controller
 
 from shadow.capture.models import InputEvent, InputEventType
 from shadow.capture.recorder import Recorder, RecordingSession
@@ -48,35 +49,25 @@ class TestRecorder:
             assert frame.image.shape[2] == 3
 
     def test_recorder_records_events(self):
-        """녹화 중 이벤트가 수집되는지 확인 (프로그래매틱하게 주입)"""
+        """녹화 중 이벤트가 수집되는지 확인 (실제 마우스 클릭)"""
         recorder = Recorder(fps=10)
+        mouse = Controller()
 
-        # 콜백으로 이벤트 주입
-        def inject_event(recorder_instance):
-            # 고유한 좌표로 테스트 이벤트 생성
-            test_event = InputEvent(
-                timestamp=time.time(),
-                event_type=InputEventType.MOUSE_CLICK,
-                x=99999,  # 고유한 값으로 식별 가능
-                y=99999,
-            )
-            recorder_instance._input_collector._emit_event(test_event)
-
-        # 녹화 시작 전에 collector에 접근할 수 있도록 start/stop 사용
+        # 녹화 시작
         recorder.start()
         time.sleep(0.1)
 
-        # 이벤트 주입
-        inject_event(recorder)
+        # 실제 마우스 클릭 시뮬레이션
+        initial_position = mouse.position
+        mouse.click(Button.left, 1)
 
         time.sleep(0.2)
         session = recorder.stop()
 
-        # 주입한 이벤트가 수집되었는지 확인 (고유 좌표로 식별)
+        # 클릭 이벤트가 수집되었는지 확인
         assert len(session.events) >= 1
-        injected_event = next((e for e in session.events if e.x == 99999), None)
-        assert injected_event is not None
-        assert injected_event.event_type == InputEventType.MOUSE_CLICK
+        click_events = [e for e in session.events if e.event_type == InputEventType.MOUSE_CLICK]
+        assert len(click_events) >= 1
 
 
 class TestRecordingSession:
@@ -151,18 +142,14 @@ class TestRecorderFrameEventSynchronization:
     def test_frames_and_events_have_consistent_timestamps(self):
         """프레임과 이벤트의 타임스탬프가 일관되는지 확인"""
         recorder = Recorder(fps=10)
+        mouse = Controller()
 
         recorder.start()
         time.sleep(0.1)
 
-        # 고유한 좌표로 이벤트 주입
-        test_event = InputEvent(
-            timestamp=time.time(),
-            event_type=InputEventType.MOUSE_CLICK,
-            x=88888,
-            y=88888,
-        )
-        recorder._input_collector._emit_event(test_event)
+        # 실제 마우스 클릭 시뮬레이션
+        click_time = time.time()
+        mouse.click(Button.left, 1)
 
         time.sleep(0.2)
         session = recorder.stop()
@@ -171,15 +158,16 @@ class TestRecorderFrameEventSynchronization:
         assert len(session.frames) > 0
         assert len(session.events) > 0
 
-        # 주입한 이벤트 확인
-        injected_event = next((e for e in session.events if e.x == 88888), None)
-        assert injected_event is not None
+        # 클릭 이벤트 확인
+        click_events = [e for e in session.events if e.event_type == InputEventType.MOUSE_CLICK]
+        assert len(click_events) >= 1
 
         # 타임스탬프 범위 확인
         frame_timestamps = [f.timestamp for f in session.frames]
 
-        # 주입한 이벤트의 타임스탬프가 프레임 타임스탬프 범위 내에 있는지
-        assert min(frame_timestamps) <= injected_event.timestamp <= max(frame_timestamps)
+        # 클릭 이벤트의 타임스탬프가 프레임 타임스탬프 범위 내에 있는지
+        for click_event in click_events:
+            assert min(frame_timestamps) <= click_event.timestamp <= max(frame_timestamps)
 
     def test_session_duration_matches_recording_time(self):
         """세션 duration이 실제 녹화 시간과 일치하는지 확인"""
