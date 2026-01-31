@@ -49,6 +49,7 @@ SUPABASE_KEY=your-supabase-anon-key
 SLACK_BOT_TOKEN=xoxb-...
 SLACK_SIGNING_SECRET=...
 SLACK_APP_TOKEN=xapp-...
+SLACK_DEFAULT_CHANNEL=C07UZ1234AB  # 기본 전송 채널 ID
 ```
 
 ## 데이터베이스 마이그레이션
@@ -94,12 +95,42 @@ make db-diff           # 로컬-프로덕션 차이 확인
 
 ### REST API 서버
 
+#### Makefile 명령어 (권장)
+
+```bash
+# 환경 변수 확인
+make check-env
+
+# FastAPI 서버만 실행
+make server
+
+# ngrok 터널링 (별도 터미널)
+make ngrok
+
+# 개발 환경 시작 (서버 + ngrok, tmux 사용)
+make dev
+```
+
+#### 수동 실행
+
 ```bash
 # FastAPI 서버 시작
 uv run uvicorn main:app --reload
 
 # 서버 주소: http://127.0.0.1:8000
 # API 문서: http://127.0.0.1:8000/docs
+```
+
+#### ngrok으로 외부 노출 (Slack 연동 시)
+
+Slack 이벤트를 수신하려면 ngrok으로 로컬 서버를 외부에 노출해야 합니다.
+
+**자세한 가이드**: [`NGROK_GUIDE.md`](NGROK_GUIDE.md) 참조
+
+**빠른 시작**:
+```bash
+# tmux를 사용하여 서버와 ngrok을 동시에 실행
+make dev
 ```
 
 #### API 엔드포인트

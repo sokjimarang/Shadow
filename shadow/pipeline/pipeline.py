@@ -14,6 +14,7 @@ from typing import Any
 from shadow.analysis.models import LabeledAction
 from shadow.capture.models import KeyframePair
 from shadow.capture.recorder import RecordingSession
+from shadow.config import settings
 from shadow.hitl.models import Question, Response
 from shadow.patterns.models import DetectedPattern
 from shadow.spec.models import Spec
@@ -70,7 +71,7 @@ class Pipeline:
         slack_client,
         response_handler,
         spec_builder,
-        slack_channel: str = "mock-channel",
+        slack_channel: str | None = None,
         verbose: bool = True,
     ):
         """
@@ -94,7 +95,7 @@ class Pipeline:
         self._slack_client = slack_client
         self._response_handler = response_handler
         self._spec_builder = spec_builder
-        self._slack_channel = slack_channel
+        self._slack_channel = slack_channel or settings.slack_default_channel
         self._verbose = verbose
 
     def _log(self, message: str) -> None:
