@@ -67,6 +67,15 @@ python demo.py --test
 2. **시스템 설정 > 개인정보 보호 및 보안 > 화면 및 시스템 오디오 녹화**
    - 터미널 앱 추가
 
+### 활성 윈도우 정보 수집
+
+Shadow는 PyObjC를 통해 활성 애플리케이션 이름을 자동으로 수집합니다:
+
+- 각 입력 이벤트에 `window_info` 필드 포함
+- `event.window_info.app_name`으로 애플리케이션 이름 접근
+- `bundle_id`, `process_id` 등 메타데이터 포함
+- PyObjC 미설치 시에도 이벤트 수집은 계속 진행 (graceful degradation)
+
 ## 프로젝트 구조
 
 ```
