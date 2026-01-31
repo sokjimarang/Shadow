@@ -1,5 +1,6 @@
 """pynput 기반 입력 이벤트 수집 모듈"""
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -8,7 +9,9 @@ from queue import Empty, Queue
 from pynput import keyboard, mouse
 
 from shadow.capture.models import InputEvent, InputEventType
-from shadow.capture.window import get_active_window
+from shadow.capture.window import WindowInfoCollector, get_active_window, get_window_at_point
+
+logger = logging.getLogger(__name__)
 
 
 class InputEventCollector:
@@ -25,6 +28,22 @@ class InputEventCollector:
         self._keyboard_listener: keyboard.Listener | None = None
         self._running = False
         self._callbacks: list[Callable[[InputEvent], None]] = []
+        self._window_collector: WindowInfoCollector | None = None
+        if WindowInfoCollector.is_available():
+            try:
+                self._window_collector = WindowInfoCollector()
+            except Exception:
+                self._window_collector = None
+
+    def _get_window_info_for_point(self, x: int, y: int):
+        if self._window_collector:
+            return self._window_collector.get_window_at_point(x, y)
+        return get_window_at_point(x, y)
+
+    def _get_active_window_info(self):
+        if self._window_collector:
+            return self._window_collector.get_active_window()
+        return get_active_window()
 
     def add_callback(self, callback: Callable[[InputEvent], None]) -> None:
         """이벤트 발생 시 호출될 콜백 추가"""
@@ -60,7 +79,7 @@ class InputEventCollector:
             return
 
         # F-03: 활성 윈도우 정보 수집
-        window_info = get_active_window()
+        window_info = self._get_window_info_for_point(x, y)
 
         event = InputEvent(
             timestamp=time.time(),
@@ -72,6 +91,13 @@ class InputEventCollector:
             window_title=window_info.window_title,
             window_info=window_info,
         )
+        logger.info(
+            "click window_info app=%s title=%s x=%s y=%s",
+            window_info.app_name,
+            window_info.window_title,
+            x,
+            y,
+        )
         self._emit_event(event)
 
     def _on_mouse_move(self, x: int, y: int) -> None:
@@ -81,7 +107,7 @@ class InputEventCollector:
     def _on_mouse_scroll(self, x: int, y: int, dx: int, dy: int) -> None:
         """마우스 스크롤 이벤트 핸들러"""
         # F-03: 활성 윈도우 정보 수집
-        window_info = get_active_window()
+        window_info = self._get_window_info_for_point(x, y)
 
         event = InputEvent(
             timestamp=time.time(),
@@ -99,7 +125,7 @@ class InputEventCollector:
     def _on_key_press(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
         """키 누름 이벤트 핸들러"""
         # F-03: 활성 윈도우 정보 수집
-        window_info = get_active_window()
+        window_info = self._get_active_window_info()
 
         key_str = self._key_to_string(key)
         event = InputEvent(
@@ -115,7 +141,7 @@ class InputEventCollector:
     def _on_key_release(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
         """키 릴리즈 이벤트 핸들러"""
         # F-03: 활성 윈도우 정보 수집
-        window_info = get_active_window()
+        window_info = self._get_active_window_info()
 
         key_str = self._key_to_string(key)
         event = InputEvent(

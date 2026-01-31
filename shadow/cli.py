@@ -1,11 +1,11 @@
 """Shadow CLI
 
 사용법:
-    shadow start [--duration SECONDS]   녹화 시작
-    shadow stop                         녹화 중지
-    shadow analyze [SESSION_DIR]        세션 분석
-    shadow test-slack                   Slack 연동 테스트
-    shadow mock-e2e                     모킹 E2E 테스트
+    shadow start [--min MINUTES | --sec SECONDS | --duration SECONDS]   녹화 시작
+    shadow stop                                                          녹화 중지
+    shadow analyze [SESSION_DIR]                                         세션 분석
+    shadow test-slack                                                    Slack 연동 테스트
+    shadow mock-e2e                                                      모킹 E2E 테스트
 """
 
 import argparse
@@ -24,7 +24,14 @@ def cmd_start(args):
     from shadow.capture.storage import SessionStorage
     from shadow.preprocessing.keyframe import KeyframeExtractor
 
-    duration = args.duration
+    # 우선순위: --sec > --min > --duration
+    if args.sec is not None:
+        duration = args.sec
+    elif args.min is not None:
+        duration = args.min * 60
+    else:
+        duration = args.duration
+
     print(f"녹화 시작 ({duration}초)...")
     print("녹화 중... Ctrl+C로 중지")
 
@@ -338,6 +345,12 @@ def main():
     start_parser = subparsers.add_parser("start", help="녹화 시작")
     start_parser.add_argument(
         "--duration", "-d", type=int, default=10, help="녹화 시간 (초, 기본: 10)"
+    )
+    start_parser.add_argument(
+        "--min", type=int, help="녹화 시간 (분)"
+    )
+    start_parser.add_argument(
+        "--sec", type=int, help="녹화 시간 (초)"
     )
 
     # stop 명령
