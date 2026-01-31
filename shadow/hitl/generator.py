@@ -17,24 +17,29 @@ class QuestionGenerator:
     """
 
     def generate(self, pattern: DetectedPattern) -> list[Question]:
-        """패턴에서 HITL 질문 목록 생성
+        """패턴에서 HITL 질문 목록 생성 (최소 2개 보장)
 
         Args:
             pattern: 분석된 패턴
 
         Returns:
-            생성된 질문 목록
+            생성된 질문 목록 (최소 2개)
         """
         questions = []
 
-        # 불확실성이 없으면 기본 가설 검증 질문 생성
-        if not pattern.uncertainties:
-            questions.append(self._create_default_hypothesis_question(pattern))
-        else:
+        # 기본 가설 검증 질문은 항상 생성
+        questions.append(self._create_default_hypothesis_question(pattern))
+
+        # 불확실성 기반 질문 추가
+        if pattern.uncertainties:
             for i, uncertainty in enumerate(pattern.uncertainties):
                 question = self._create_question_from_uncertainty(pattern, uncertainty, i)
                 if question:
                     questions.append(question)
+
+        # 최소 2개 보장: 불확실성 질문이 없으면 조건 질문 추가
+        if len(questions) < 2:
+            questions.append(self._create_default_condition_question(pattern))
 
         return questions
 
@@ -65,6 +70,38 @@ class QuestionGenerator:
                     id="no",
                     text="아니오, 잘못되었습니다",
                     value={"confirmed": False, "needs_review": True},
+                ),
+            ],
+            source_pattern_id=pattern.pattern_id,
+            source_uncertainty_index=None,
+        )
+
+    def _create_default_condition_question(self, pattern: DetectedPattern) -> Question:
+        """기본 조건 질문 생성 (최소 2개 질문 보장용)"""
+        action_descriptions = [
+            f"{i+1}. {a.action} - {a.target}" for i, a in enumerate(pattern.actions)
+        ]
+        pattern_desc = "\n".join(action_descriptions)
+
+        return Question(
+            id=str(uuid.uuid4()),
+            type=QuestionType.CONDITION,
+            text=f"이 작업은 어떤 조건에서 수행하나요?\n\n{pattern_desc}",
+            options=[
+                QuestionOption(
+                    id="always",
+                    text="항상 수행합니다",
+                    value={"condition": "always"},
+                ),
+                QuestionOption(
+                    id="specific",
+                    text="특정 조건에서만 수행합니다",
+                    value={"condition": "specific", "needs_detail": True},
+                ),
+                QuestionOption(
+                    id="depends",
+                    text="상황에 따라 다릅니다",
+                    value={"condition": "variable"},
                 ),
             ],
             source_pattern_id=pattern.pattern_id,

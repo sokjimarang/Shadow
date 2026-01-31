@@ -12,7 +12,7 @@ class PatternDetector:
     def __init__(
         self,
         min_length: int | None = None,
-        min_occurrences: int = 2,
+        min_occurrences: int = 3,  # PRD: 3회 관찰 필요
         similarity_threshold: float | None = None,
     ):
         """

@@ -122,6 +122,17 @@ class KeyframeExtractor:
 
         return None
 
+    def extract(self, session: RecordingSession) -> list[KeyframePair]:
+        """extract_pairs의 별칭 (호환성 유지)
+
+        Args:
+            session: 녹화 세션
+
+        Returns:
+            KeyframePair 목록
+        """
+        return self.extract_pairs(session)
+
     def extract_pairs_from_events(
         self, frames: list[Frame], events: list[InputEvent]
     ) -> list[KeyframePair]:

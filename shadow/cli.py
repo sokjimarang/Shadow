@@ -111,9 +111,44 @@ def cmd_test_slack(args):
 def cmd_mock_e2e(args):
     """모킹 E2E 테스트
 
-    실제 녹화 없이 더미 데이터로 전체 파이프라인을 테스트합니다.
+    Pipeline 클래스를 사용하여 전체 파이프라인을 테스트합니다.
+    Record → Analyze → Patterns → Questions → Slack → Response → Spec
     """
-    print("=== Shadow v0.1 모킹 E2E 테스트 ===\n")
+    from shadow.pipeline import create_mock_pipeline
+    from shadow.spec.builder import SpecStorage
+
+    print("=== Shadow v0.1 Mock E2E 파이프라인 테스트 ===")
+
+    # Mock 파이프라인 생성 및 실행
+    pipeline = create_mock_pipeline(name="MockWorkflow", verbose=True)
+    result = pipeline.run_sync(duration=5.0)
+
+    if not result.success:
+        print(f"\n[실패] {result.error}")
+        return None
+
+    # 명세서 저장
+    storage = SpecStorage(base_dir="outputs")
+    spec_path = storage.save(result.spec, filename="mock_e2e_spec.json")
+
+    # 결과 요약
+    print("\n" + "=" * 50)
+    print(" E2E 테스트 완료")
+    print("=" * 50)
+    print(f"명세서 저장됨: {spec_path}")
+    print(f"\n실행 통계:")
+    for key, value in result.stats.items():
+        print(f"  - {key}: {value}")
+
+    return spec_path
+
+
+def cmd_mock_e2e_legacy(args):
+    """[레거시] 기존 하드코딩 방식의 E2E 테스트
+
+    Pipeline 클래스 도입 이전 코드. 비교 테스트용으로 유지.
+    """
+    print("=== Shadow v0.1 모킹 E2E 테스트 (레거시) ===\n")
 
     # 1. 더미 데이터 생성
     print("[1/6] 더미 데이터 생성...")
@@ -155,9 +190,10 @@ def cmd_mock_e2e(args):
     print(f"  - 이벤트: {len(events)}개")
     print(f"  - 키프레임 쌍: {len(pairs)}개")
 
-    # 2. 더미 액션 라벨 생성
+    # 2. 더미 액션 라벨 생성 (PRD: 3회 반복 필요)
     print("\n[2/6] 액션 라벨 생성 (VLM 모킹)...")
     actions = [
+        # 1회차
         LabeledAction(
             action="click",
             target="저장 버튼",
@@ -173,11 +209,31 @@ def cmd_mock_e2e(args):
             context="TestApp - 다이얼로그",
             description="확인 다이얼로그에서 확인 클릭",
         ),
+        # 2회차
         LabeledAction(
             action="click",
             target="저장 버튼",
             context="TestApp",
             description="파일 저장 버튼 클릭",
+        ),
+        LabeledAction(
+            action="click",
+            target="확인 버튼",
+            context="TestApp - 다이얼로그",
+            description="확인 다이얼로그에서 확인 클릭",
+        ),
+        # 3회차
+        LabeledAction(
+            action="click",
+            target="저장 버튼",
+            context="TestApp",
+            description="파일 저장 버튼 클릭",
+        ),
+        LabeledAction(
+            action="click",
+            target="확인 버튼",
+            context="TestApp - 다이얼로그",
+            description="확인 다이얼로그에서 확인 클릭",
         ),
     ]
     for a in actions:
@@ -187,7 +243,7 @@ def cmd_mock_e2e(args):
     print("\n[3/6] 패턴 감지...")
     from shadow.patterns.detector import PatternDetector
 
-    detector = PatternDetector(min_length=1, min_occurrences=2)
+    detector = PatternDetector(min_length=1, min_occurrences=3)  # PRD: 3회 관찰 필요
     patterns = detector.detect(actions)
 
     # 패턴에 불확실성 추가 (테스트용)
@@ -296,7 +352,10 @@ def main():
     slack_parser.add_argument("--channel", "-c", help="테스트 채널 ID")
 
     # mock-e2e 명령
-    mock_parser = subparsers.add_parser("mock-e2e", help="모킹 E2E 테스트")
+    mock_parser = subparsers.add_parser("mock-e2e", help="Mock E2E 파이프라인 테스트")
+
+    # mock-e2e-legacy 명령 (비교용)
+    legacy_parser = subparsers.add_parser("mock-e2e-legacy", help="[레거시] 기존 방식 E2E 테스트")
 
     args = parser.parse_args()
 
@@ -310,6 +369,8 @@ def main():
         cmd_test_slack(args)
     elif args.command == "mock-e2e":
         cmd_mock_e2e(args)
+    elif args.command == "mock-e2e-legacy":
+        cmd_mock_e2e_legacy(args)
     else:
         parser.print_help()
 
