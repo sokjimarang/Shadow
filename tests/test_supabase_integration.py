@@ -18,10 +18,16 @@ import pytest
 
 from shadow.api.errors import ErrorCode, ShadowAPIError
 from shadow.api.repositories import (
+    ConfigRepository,
+    DetectedPatternRepository,
     HITLRepository,
+    InterpretedAnswerRepository,
+    LabeledActionRepository,
     ObservationRepository,
+    SessionSequenceRepository,
     SessionRepository,
     SpecRepository,
+    UserRepository,
 )
 from shadow.core.database import Database
 
@@ -93,6 +99,42 @@ def cleanup_questions(db_client):
             db_client.table("hitl_questions").delete().eq("id", question_id).execute()
         except Exception as e:
             print(f"질문 정리 실패 ({question_id}): {e}")
+
+
+@pytest.fixture
+def cleanup_users(db_client):
+    """테스트 후 사용자 정리"""
+    created_user_ids = []
+
+    def track_user(user_id):
+        created_user_ids.append(user_id)
+
+    yield track_user
+
+    # 테스트에서 생성된 사용자 삭제 (configs도 CASCADE 삭제됨)
+    for user_id in created_user_ids:
+        try:
+            db_client.table("users").delete().eq("id", user_id).execute()
+        except Exception as e:
+            print(f"사용자 정리 실패 ({user_id}): {e}")
+
+
+@pytest.fixture
+def cleanup_patterns(db_client):
+    """테스트 후 패턴 정리"""
+    created_pattern_ids = []
+
+    def track_pattern(pattern_id):
+        created_pattern_ids.append(pattern_id)
+
+    yield track_pattern
+
+    # 테스트에서 생성된 패턴 삭제
+    for pattern_id in created_pattern_ids:
+        try:
+            db_client.table("detected_patterns").delete().eq("id", pattern_id).execute()
+        except Exception as e:
+            print(f"패턴 정리 실패 ({pattern_id}): {e}")
 
 
 # ====== DB 연결 테스트 ======
@@ -490,6 +532,282 @@ class TestIntegrationWorkflow:
         assert final_spec["version"] == "1.0.0"
 
         print("\n✓ 전체 워크플로우 테스트 성공!")
+
+
+# ====== User Repository 테스트 ======
+
+
+class TestUserRepository:
+    """User CRUD 테스트"""
+
+    def test_create_user(self, db_client, cleanup_users):
+        """사용자 생성 테스트"""
+        repo = UserRepository(db_client)
+
+        slack_user_id = f"U{uuid.uuid4().hex[:8].upper()}"
+        slack_channel_id = f"D{uuid.uuid4().hex[:8].upper()}"
+
+        user = repo.create_user(slack_user_id, slack_channel_id)
+        cleanup_users(user["id"])
+
+        assert user is not None
+        assert user["slack_user_id"] == slack_user_id
+        assert user["slack_channel_id"] == slack_channel_id
+        assert "id" in user
+
+        print(f"\n✓ 사용자 생성 성공: {user['id']}")
+
+    def test_get_user_by_slack_id(self, db_client, cleanup_users):
+        """Slack ID로 사용자 조회 테스트"""
+        repo = UserRepository(db_client)
+
+        slack_user_id = f"U{uuid.uuid4().hex[:8].upper()}"
+        created_user = repo.create_user(slack_user_id, f"D{uuid.uuid4().hex[:8].upper()}")
+        cleanup_users(created_user["id"])
+
+        user = repo.get_user_by_slack_id(slack_user_id)
+
+        assert user is not None
+        assert user["slack_user_id"] == slack_user_id
+
+        print(f"\n✓ Slack ID로 사용자 조회 성공: {slack_user_id}")
+
+
+# ====== Config Repository 테스트 ======
+
+
+class TestConfigRepository:
+    """Config CRUD 테스트"""
+
+    def test_create_config(self, db_client, cleanup_users):
+        """설정 생성 테스트"""
+        user_repo = UserRepository(db_client)
+        config_repo = ConfigRepository(db_client)
+
+        # 먼저 사용자 생성
+        user = user_repo.create_user(f"U{uuid.uuid4().hex[:8].upper()}", "D123")
+        cleanup_users(user["id"])
+
+        # 설정 생성
+        config = config_repo.create_config(
+            user_id=user["id"],
+            excluded_apps=["Slack", "Discord"],
+            capture_interval_ms=200,
+            min_pattern_occurrences=5,
+        )
+
+        assert config is not None
+        assert config["user_id"] == user["id"]
+        assert "Slack" in config["excluded_apps"]
+        assert config["capture_interval_ms"] == 200
+
+        print(f"\n✓ 설정 생성 성공: {user['id']}")
+
+    def test_add_excluded_app(self, db_client, cleanup_users):
+        """제외 앱 추가 테스트"""
+        user_repo = UserRepository(db_client)
+        config_repo = ConfigRepository(db_client)
+
+        user = user_repo.create_user(f"U{uuid.uuid4().hex[:8].upper()}", "D123")
+        cleanup_users(user["id"])
+
+        config_repo.create_config(user_id=user["id"])
+
+        updated_config = config_repo.add_excluded_app(user["id"], "Chrome")
+
+        assert "Chrome" in updated_config["excluded_apps"]
+
+        print(f"\n✓ 제외 앱 추가 성공: Chrome")
+
+
+# ====== LabeledAction Repository 테스트 ======
+
+
+class TestLabeledActionRepository:
+    """LabeledAction CRUD 테스트"""
+
+    def test_create_action(self, db_client, test_user_id, cleanup_sessions):
+        """행동 생성 테스트"""
+        session_repo = SessionRepository(db_client)
+        action_repo = LabeledActionRepository(db_client)
+
+        # 세션 생성
+        session = session_repo.create_session(test_user_id)
+
+        # 행동 생성
+        action = action_repo.create_action(
+            observation_id=str(uuid.uuid4()),
+            session_id=session["id"],
+            timestamp=datetime.utcnow(),
+            action_type="click",
+            target_element="Submit Button",
+            app="Chrome",
+            semantic_label="클릭: 제출 버튼",
+            confidence=0.95,
+        )
+
+        assert action is not None
+        assert action["action_type"] == "click"
+        assert action["confidence"] == 0.95
+
+        print(f"\n✓ 행동 생성 성공: {action['id']}")
+
+    def test_get_actions_by_session(self, db_client, test_user_id, cleanup_sessions):
+        """세션별 행동 조회 테스트"""
+        session_repo = SessionRepository(db_client)
+        action_repo = LabeledActionRepository(db_client)
+
+        session = session_repo.create_session(test_user_id)
+
+        # 행동 2개 생성
+        action_repo.create_action(
+            observation_id=str(uuid.uuid4()),
+            session_id=session["id"],
+            timestamp=datetime.utcnow(),
+            action_type="click",
+            target_element="Button 1",
+            app="Chrome",
+            semantic_label="클릭 1",
+        )
+        action_repo.create_action(
+            observation_id=str(uuid.uuid4()),
+            session_id=session["id"],
+            timestamp=datetime.utcnow(),
+            action_type="type",
+            target_element="Input Field",
+            app="Chrome",
+            semantic_label="입력",
+        )
+
+        actions = action_repo.get_actions_by_session(session["id"])
+
+        assert len(actions) >= 2
+
+        print(f"\n✓ 세션별 행동 조회 성공: {len(actions)}개")
+
+
+# ====== SessionSequence Repository 테스트 ======
+
+
+class TestSessionSequenceRepository:
+    """SessionSequence CRUD 테스트"""
+
+    def test_create_sequence(self, db_client, test_user_id, cleanup_sessions):
+        """시퀀스 생성 테스트"""
+        session_repo = SessionRepository(db_client)
+        sequence_repo = SessionSequenceRepository(db_client)
+
+        session = session_repo.create_session(test_user_id)
+
+        sequence = sequence_repo.create_sequence(
+            session_id=session["id"], start_time=datetime.utcnow()
+        )
+
+        assert sequence is not None
+        assert sequence["session_id"] == session["id"]
+        assert sequence["status"] == "recording"
+
+        print(f"\n✓ 시퀀스 생성 성공: {sequence['id']}")
+
+    def test_add_action_to_sequence(self, db_client, test_user_id, cleanup_sessions):
+        """시퀀스에 행동 추가 테스트"""
+        session_repo = SessionRepository(db_client)
+        sequence_repo = SessionSequenceRepository(db_client)
+
+        session = session_repo.create_session(test_user_id)
+        sequence = sequence_repo.create_sequence(
+            session_id=session["id"], start_time=datetime.utcnow()
+        )
+
+        action_id = str(uuid.uuid4())
+        updated_sequence = sequence_repo.add_action(sequence["id"], action_id, "Chrome")
+
+        assert action_id in updated_sequence["action_ids"]
+        assert "Chrome" in updated_sequence["apps_used"]
+
+        print(f"\n✓ 시퀀스에 행동 추가 성공")
+
+
+# ====== DetectedPattern Repository 테스트 ======
+
+
+class TestDetectedPatternRepository:
+    """DetectedPattern CRUD 테스트"""
+
+    def test_create_pattern(self, db_client, cleanup_patterns):
+        """패턴 생성 테스트"""
+        repo = DetectedPatternRepository(db_client)
+
+        pattern = repo.create_pattern(
+            core_sequence=[{"step": 1, "action": "click", "target": "button"}],
+            apps_involved=["Chrome", "Slack"],
+            occurrences=3,
+            name="테스트 패턴",
+            confidence=0.85,
+        )
+
+        cleanup_patterns(pattern["id"])
+
+        assert pattern is not None
+        assert pattern["status"] == "detected"
+        assert pattern["occurrences"] == 3
+        assert "Chrome" in pattern["apps_involved"]
+
+        print(f"\n✓ 패턴 생성 성공: {pattern['id']}")
+
+    def test_increment_occurrence(self, db_client, cleanup_patterns):
+        """발생 횟수 증가 테스트"""
+        repo = DetectedPatternRepository(db_client)
+
+        pattern = repo.create_pattern(
+            core_sequence=[{"step": 1}], apps_involved=["Chrome"], occurrences=1
+        )
+        cleanup_patterns(pattern["id"])
+
+        updated_pattern = repo.increment_occurrence(pattern["id"])
+
+        assert updated_pattern["occurrences"] == 2
+
+        print(f"\n✓ 발생 횟수 증가 성공: 2회")
+
+
+# ====== InterpretedAnswer Repository 테스트 ======
+
+
+class TestInterpretedAnswerRepository:
+    """InterpretedAnswer CRUD 테스트"""
+
+    def test_create_answer(self, db_client):
+        """해석된 응답 생성 테스트"""
+        repo = InterpretedAnswerRepository(db_client)
+
+        answer_id = str(uuid.uuid4())
+        interpreted = repo.create_answer(
+            answer_id=answer_id,
+            action="add_rule",
+            spec_update={"path": "rules", "operation": "add", "value": {"id": "rule1"}},
+            confidence=0.9,
+        )
+
+        assert interpreted is not None
+        assert interpreted["action"] == "add_rule"
+        assert interpreted["applied"] is False
+
+        print(f"\n✓ 해석된 응답 생성 성공: {interpreted['id']}")
+
+    def test_mark_applied(self, db_client):
+        """명세서 반영 표시 테스트"""
+        repo = InterpretedAnswerRepository(db_client)
+
+        answer_id = str(uuid.uuid4())
+        interpreted = repo.create_answer(answer_id=answer_id, action="add_rule")
+
+        marked = repo.mark_applied(interpreted["id"])
+
+        assert marked["applied"] is True
+        assert "applied_at" in marked
+
+        print(f"\n✓ 명세서 반영 표시 성공")
 
 
 if __name__ == "__main__":
