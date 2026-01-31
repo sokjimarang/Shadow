@@ -149,6 +149,7 @@ make db-pull
 ```
 docs/
 ├── direction/     # 기획 메인 파일 (PRD, Service Plan 등)
+├── scenario/      # 유저 시나리오 (구체화된 사용 사례)
 ├── plan/          # Claude plan mode로 생성된 계획안
 ├── report/        # 구현 상태, 문제 상황 등 리포트
 └── database/      # 데이터베이스 관련 문서
@@ -165,6 +166,11 @@ docs/
 - `docs/direction/data_schema.md`
 - `docs/direction/main_service-plan-v1.2.md`
 - `docs/direction/prd.md`
+
+#### scenario (유저 시나리오)
+- `docs/scenario/scenario-01-pm-slack-response.md`
+- `docs/scenario/scenario-02-hr-form-management.md`
+- `docs/scenario/scenario-03-marketer-ads-automation.md`
 
 #### plan (계획안)
 - `docs/plan/plan-nemotron-vl.md`
