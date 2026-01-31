@@ -1,12 +1,10 @@
 """Vision Analyzer 추상 베이스 클래스
 
 LLM 모델을 쉽게 교체할 수 있도록 인터페이스를 정의합니다.
-- Claude, Qwen(로컬) 등 다양한 백엔드 지원
 """
 
 import io
 from abc import ABC, abstractmethod
-from enum import Enum
 
 from PIL import Image
 
@@ -52,12 +50,6 @@ class BaseVisionAnalyzer(ABC):
         Returns:
             분석된 동작 라벨 목록
         """
-        pass
-
-    @property
-    @abstractmethod
-    def backend(self) -> AnalyzerBackend:
-        """분석기 백엔드 타입"""
         pass
 
     @property

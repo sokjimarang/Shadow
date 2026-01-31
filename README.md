@@ -116,14 +116,18 @@ uv run uvicorn main:app --reload
 
 자세한 API 테스트는 `test_main.http` 파일 참조
 
-### CLI 데모
+### CLI
 
 ```bash
-# 5초 녹화 및 분석
-python demo.py --record 5
+# E2E 파이프라인 실행 (권장)
+uv run python -m shadow.cli e2e --duration 5
 
-# API 없이 패턴 감지 테스트 (더미 데이터)
-python demo.py --test
+# E2E 파이프라인 with Slack
+uv run python -m shadow.cli e2e --duration 5 --slack-channel C12345678
+
+# 데모 스크립트
+python demo.py --record 5        # 5초 녹화 및 분석
+python demo.py --test            # API 없이 패턴 감지 테스트
 ```
 
 ### macOS 권한 설정
@@ -160,6 +164,7 @@ shadow/
 ├── analysis/          # Vision AI 분석
 │   ├── base.py        # 분석기 베이스 클래스
 │   ├── claude.py      # Claude Opus 4.5 분석기
+│   ├── prompts.py     # 프롬프트 템플릿
 │   └── models.py      # LabeledAction, SessionSequence
 ├── patterns/          # 패턴 감지
 │   ├── analyzer/      # LLM 기반 패턴 분석기

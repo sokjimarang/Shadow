@@ -180,6 +180,9 @@ docs/
 - `docs/report/batch-analysis-observations.md`
 - `docs/report/implementation_status.md`
 - `docs/report/p0_gap_report.md`
+
+#### database (데이터베이스)
+- `docs/database/migration-guide.md`
 <!-- DOCS_LIST_END -->
 
 ### 기능 구현 시 참조 문서
@@ -215,18 +218,20 @@ docs/
 ## 실행 방법
 
 ```bash
-# 데모 실행
-python demo.py --record 5              # Claude로 5초 녹화
+# E2E 파이프라인 실행
+uv run python -m shadow.cli e2e --duration 5
+
+# 데모 (직접 모듈 호출)
+python demo.py --record 5
 
 # 테스트
-uv run pytest                          # 단위 테스트
-uv run pytest -m integration -v -s     # 통합 테스트 (API 호출)
+uv run pytest
 ```
 
 ## 환경 변수
 
 ```env
-# AI API Keys
+# Claude API
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Supabase (shadow-web과 동일한 DB 사용)

@@ -15,8 +15,6 @@ import time
 import uuid
 from pathlib import Path
 
-import numpy as np
-
 
 def cmd_start(args):
     """녹화 시작"""
@@ -115,39 +113,55 @@ def cmd_test_slack(args):
         print(f"전송 실패: {e}")
 
 
-def cmd_mock_e2e(args):
-    """모킹 E2E 테스트
+def cmd_e2e(args):
+    """E2E 파이프라인 실행
 
-    Pipeline 클래스를 사용하여 전체 파이프라인을 테스트합니다.
-    Record → Analyze → Patterns → Questions → Slack → Response → Spec
+    Record → Keyframe → Analyze → Pattern → Question → (Slack) → Spec
     """
-    from shadow.pipeline import create_mock_pipeline
+    from shadow.pipeline import Pipeline
     from shadow.spec.builder import SpecStorage
 
-    print("=== Shadow v0.1 Mock E2E 파이프라인 테스트 ===")
+    duration = args.duration
+    name = args.name or "Workflow"
+    slack_channel = args.slack_channel
 
-    # Mock 파이프라인 생성 및 실행
-    pipeline = create_mock_pipeline(name="MockWorkflow", verbose=True)
-    result = pipeline.run_sync(duration=5.0)
+    print("=== Shadow E2E 파이프라인 ===")
+    print(f"녹화 시간: {duration}초")
+    if slack_channel:
+        print(f"Slack 채널: {slack_channel}")
+    else:
+        print("Slack: 비활성 (--slack-channel 옵션으로 활성화)")
 
-    if not result.success:
-        print(f"\n[실패] {result.error}")
-        return None
-
-    # 명세서 저장
-    storage = SpecStorage(base_dir="outputs")
-    spec_path = storage.save(result.spec, filename="mock_e2e_spec.json")
+    # 파이프라인 생성 및 실행
+    pipeline = Pipeline(
+        name=name,
+        slack_channel=slack_channel,
+        verbose=True,
+    )
+    result = pipeline.run_sync(duration=duration)
 
     # 결과 요약
     print("\n" + "=" * 50)
-    print(" E2E 테스트 완료")
+    if result.success:
+        print(" E2E 파이프라인 완료")
+    else:
+        print(f" 파이프라인 중단: {result.stopped_at}")
+        if result.error:
+            print(f" 오류: {result.error}")
     print("=" * 50)
-    print(f"명세서 저장됨: {spec_path}")
+
     print(f"\n실행 통계:")
     for key, value in result.stats.items():
         print(f"  - {key}: {value}")
 
-    return spec_path
+    # 명세서 저장 (spec이 있는 경우)
+    if result.spec:
+        storage = SpecStorage(base_dir="outputs")
+        spec_path = storage.save(result.spec, filename=f"{name.lower().replace(' ', '_')}_spec.json")
+        print(f"\n명세서 저장됨: {spec_path}")
+        return spec_path
+
+    return None
 
 
 def main():
@@ -182,8 +196,17 @@ def main():
     slack_parser = subparsers.add_parser("test-slack", help="Slack 연동 테스트")
     slack_parser.add_argument("--channel", "-c", help="테스트 채널 ID")
 
-    # mock-e2e 명령
-    mock_parser = subparsers.add_parser("mock-e2e", help="Mock E2E 파이프라인 테스트")
+    # e2e 명령
+    e2e_parser = subparsers.add_parser("e2e", help="E2E 파이프라인 실행")
+    e2e_parser.add_argument(
+        "--duration", "-d", type=float, default=5.0, help="녹화 시간 (초, 기본: 5)"
+    )
+    e2e_parser.add_argument(
+        "--name", "-n", type=str, default="Workflow", help="명세서 이름"
+    )
+    e2e_parser.add_argument(
+        "--slack-channel", "-c", type=str, help="Slack 채널 ID (미지정시 Slack 스킵)"
+    )
 
     args = parser.parse_args()
 
@@ -195,8 +218,8 @@ def main():
         cmd_analyze(args)
     elif args.command == "test-slack":
         cmd_test_slack(args)
-    elif args.command == "mock-e2e":
-        cmd_mock_e2e(args)
+    elif args.command == "e2e":
+        cmd_e2e(args)
     else:
         parser.print_help()
 
