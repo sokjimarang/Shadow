@@ -20,6 +20,36 @@ class TestInputEventCollectorBasic:
         assert not collector._running
         assert collector._events.empty()
 
+    def test_collector_start_stop(self):
+        """리스너 시작/중지 테스트 (실제 리스너 사용)"""
+        collector = InputEventCollector()
+
+        # 시작
+        collector.start()
+        assert collector._running
+        assert collector._mouse_listener is not None
+        assert collector._keyboard_listener is not None
+
+        # 짧은 대기
+        time.sleep(0.1)
+
+        # 중지
+        collector.stop()
+        assert not collector._running
+        assert collector._mouse_listener is None
+        assert collector._keyboard_listener is None
+
+    def test_collector_context_manager(self):
+        """컨텍스트 매니저로 사용 (실제 리스너 사용)"""
+        collector = InputEventCollector()
+
+        with collector:
+            assert collector._running
+            time.sleep(0.1)
+
+        # 컨텍스트 종료 후 중지됨
+        assert not collector._running
+
     def test_get_events_returns_empty_when_no_events(self):
         """이벤트가 없을 때 빈 리스트 반환"""
         collector = InputEventCollector()
