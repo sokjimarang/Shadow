@@ -5,7 +5,6 @@ import time
 from pynput.mouse import Button, Controller
 
 from shadow.capture.input_events import InputEventCollector
-from shadow.capture.window import WindowInfoCollector
 from shadow.capture.models import InputEventType
 
 
@@ -15,8 +14,7 @@ def test_input_collector_has_window_collector():
 
     # WindowInfoCollector는 macOS에서만 사용 가능
     assert hasattr(collector, "_window_collector")
-    if WindowInfoCollector.is_available():
-        assert collector._window_collector is not None
+    assert collector._window_collector is not None
 
 
 def test_input_collector_captures_window_info():
@@ -24,9 +22,6 @@ def test_input_collector_captures_window_info():
 
     PRD F-03 Pass 조건: app_name 필드 존재
     """
-    if not WindowInfoCollector.is_available():
-        return
-
     collector = InputEventCollector()
     mouse = Controller()
 
