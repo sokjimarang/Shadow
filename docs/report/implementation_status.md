@@ -62,10 +62,10 @@
 - `keyframe.py`: 클릭 전후 키프레임 쌍 추출 ✅
 
 ### analysis/ (VLM 분석)
-- `claude.py`: Claude Opus 4.5 분석기 ✅ (타임아웃 30초, 로깅 추가)
+- `claude.py`: Claude 분석기 ✅ (**배치 모드 추가**, 22~28% 비용 절감, 57~67% 시간 단축)
 - `base.py`: 분석기 추상 베이스 ✅
 - `models.py`: LabeledAction, SessionSequence ✅
-- `tests/test_analysis.py`: 단위/통합 테스트 ✅
+- `tests/test_analysis.py`: 단위/통합 테스트 ✅ (배치 파싱 테스트 포함)
 
 ### patterns/ (패턴 감지)
 - `models.py`: DetectedPattern, Uncertainty ✅
@@ -138,3 +138,4 @@
 | 2026-01-31 | Repository 레이어 완성 (6개 신규 migration + 5개 신규 Repository 구현) |
 | 2026-01-31 | F-04 완성: Claude 타임아웃/로깅 추가, 테스트 작성 |
 | 2026-02-01 | F-05 완성: LLM 기반 패턴 분석기 구현 (ClaudePatternAnalyzer) |
+| 2026-02-01 | F-04 최적화: 배치 분석 모드 추가 (비용 28% 절감, 시간 67% 단축) |

@@ -108,6 +108,44 @@ class TestClaudeAnalyzerParseResponse:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         return ClaudeAnalyzer(api_key="test-key")
 
+    def test_parse_batch_response_valid(self, analyzer):
+        """유효한 배치 JSON 배열 파싱"""
+        response = """[
+            {"pair": 1, "action": "click", "target": "버튼1", "context": "App1", "description": "설명1", "state_change": "변화1"},
+            {"pair": 2, "action": "scroll", "target": "페이지", "context": "App2", "description": "설명2", "state_change": "변화2"}
+        ]"""
+
+        results = analyzer._parse_batch_response(response, expected_count=2)
+
+        assert len(results) == 2
+        assert results[0].action == "click"
+        assert results[0].target == "버튼1"
+        assert results[1].action == "scroll"
+        assert results[1].target == "페이지"
+
+    def test_parse_batch_response_fills_missing(self, analyzer):
+        """결과가 부족하면 unknown으로 채움"""
+        response = """[
+            {"pair": 1, "action": "click", "target": "버튼", "context": "App", "description": "설명"}
+        ]"""
+
+        results = analyzer._parse_batch_response(response, expected_count=3)
+
+        assert len(results) == 3
+        assert results[0].action == "click"
+        assert results[1].action == "unknown"
+        assert results[2].action == "unknown"
+
+    def test_parse_batch_response_invalid_json(self, analyzer):
+        """잘못된 JSON은 모두 unknown 반환"""
+        response = "이것은 JSON이 아닙니다"
+
+        results = analyzer._parse_batch_response(response, expected_count=2)
+
+        assert len(results) == 2
+        assert results[0].action == "unknown"
+        assert results[1].action == "unknown"
+
     def test_parse_valid_json(self, analyzer):
         """유효한 JSON 응답 파싱"""
         response = """{
@@ -212,3 +250,31 @@ class TestClaudeAnalyzerIntegration:
         assert result.action, "action이 비어있음"
         assert result.target, "target이 비어있음"
         assert result.semantic_label, "semantic_label이 비어있음"
+
+    @pytest.mark.asyncio
+    async def test_claude_analyzer_batch(self, sample_keyframe_pair):
+        """배치 분석 테스트
+
+        여러 키프레임 쌍을 한 번에 분석합니다.
+        """
+        analyzer = ClaudeAnalyzer()
+
+        # 같은 쌍을 3개로 복제해서 테스트
+        pairs = [sample_keyframe_pair, sample_keyframe_pair, sample_keyframe_pair]
+
+        results = await analyzer.analyze_batch(pairs, batch_size=3)
+
+        # 결과 출력
+        print("\n" + "=" * 50)
+        print("배치 분석 결과 (3개 쌍)")
+        print("=" * 50)
+        for i, result in enumerate(results):
+            print(f"\n[{i+1}] action: {result.action}")
+            print(f"    target: {result.target}")
+            print(f"    state_change: {result.state_change}")
+        print("=" * 50)
+
+        # 기본 검증
+        assert len(results) == 3, f"결과 수가 3이어야 함, 실제: {len(results)}"
+        for i, result in enumerate(results):
+            assert result.action, f"결과 {i+1}: action이 비어있음"
