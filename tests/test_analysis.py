@@ -206,11 +206,6 @@ class TestCreateAnalyzer:
         with pytest.raises(ValueError, match="not a valid AnalyzerBackend"):
             create_analyzer("invalid")
 
-    def test_create_qwen_not_implemented(self):
-        """Qwen은 아직 미구현"""
-        with pytest.raises(NotImplementedError):
-            create_analyzer("qwen_local")
-
 
 # =============================================================================
 # 통합 테스트 (실제 API 호출)

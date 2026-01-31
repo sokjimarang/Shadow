@@ -173,6 +173,7 @@ docs/
 
 #### plan (계획안)
 - `docs/plan/plan-client-server-separation.md`
+- `docs/plan/plan-flet-desktop-app.md`
 - `docs/plan/plan-nemotron-vl.md`
 - `docs/plan/plan-replit-deployment.md`
 
@@ -180,9 +181,7 @@ docs/
 - `docs/report/batch-analysis-observations.md`
 - `docs/report/implementation_status.md`
 - `docs/report/p0_gap_report.md`
-
-#### database (데이터베이스)
-- `docs/database/migration-guide.md`
+- `docs/report/pattern_definition_discussion.md`
 <!-- DOCS_LIST_END -->
 
 ### 기능 구현 시 참조 문서

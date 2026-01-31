@@ -127,7 +127,6 @@ uv run python -m shadow.cli e2e --duration 5 --slack-channel C12345678
 
 # 데모 스크립트
 python demo.py --record 5        # 5초 녹화 및 분석
-python demo.py --test            # API 없이 패턴 감지 테스트
 ```
 
 ### macOS 권한 설정

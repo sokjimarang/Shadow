@@ -1,7 +1,9 @@
-"""E2E 파이프라인 오케스트레이터
+"""Shadow E2E 파이프라인
 
-전체 플로우를 조율하고 각 단계의 결과를 관리합니다.
-Record → Analyze → Patterns → Questions → Slack → Response → Spec
+Record → Keyframe → Analyze → Pattern → Question → (Slack) → Spec
+
+실제 모듈만 사용하는 단순한 파이프라인 구조입니다.
+Slack 연동은 선택적입니다 (토큰이 없으면 질문 생성까지만 실행).
 """
 
 from __future__ import annotations
@@ -11,11 +13,16 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+from shadow.analysis.claude import ClaudeAnalyzer
 from shadow.analysis.models import LabeledAction
 from shadow.capture.models import KeyframePair
-from shadow.capture.recorder import RecordingSession
+from shadow.capture.recorder import Recorder, RecordingSession
+from shadow.config import settings
+from shadow.hitl.generator import QuestionGenerator
 from shadow.hitl.models import Question, Response
-from shadow.patterns.models import DetectedPattern
+from shadow.patterns import ClaudePatternAnalyzer, DetectedPattern
+from shadow.preprocessing.keyframe import KeyframeExtractor
+from shadow.spec.builder import SpecBuilder
 from shadow.spec.models import Spec
 
 
@@ -36,8 +43,8 @@ class PipelineResult:
     session_id: str = field(default_factory=lambda: f"session-{uuid.uuid4().hex[:8]}")
     success: bool = False
     error: str | None = None
+    stopped_at: str | None = None  # 어느 단계에서 멈췄는지
 
-    # 단계별 통계
     @property
     def stats(self) -> dict[str, Any]:
         """실행 통계"""
@@ -50,50 +57,33 @@ class PipelineResult:
             "questions": len(self.questions),
             "responses": len(self.responses),
             "has_spec": self.spec is not None,
+            "stopped_at": self.stopped_at,
         }
 
 
 class Pipeline:
-    """E2E 파이프라인 오케스트레이터
+    """Shadow E2E 파이프라인
 
-    각 컴포넌트를 의존성 주입받아 전체 플로우를 실행합니다.
-    Mock/실제 구현을 자유롭게 교체할 수 있습니다.
+    실제 모듈만 사용하는 단순한 파이프라인입니다.
+    Slack 연동은 선택적입니다 (토큰이 없으면 질문 생성까지만 실행).
     """
 
     def __init__(
         self,
-        recorder,
-        keyframe_extractor,
-        analyzer,
-        pattern_analyzer,
-        question_generator,
-        slack_client,
-        response_handler,
-        spec_builder,
-        slack_channel: str = "mock-channel",
+        name: str = "Workflow",
+        description: str = "",
+        slack_channel: str | None = None,
         verbose: bool = True,
     ):
         """
         Args:
-            recorder: 녹화기 (RecorderProtocol)
-            keyframe_extractor: 키프레임 추출기 (KeyframeExtractorProtocol)
-            analyzer: VLM 분석기 (AnalyzerProtocol)
-            pattern_analyzer: 패턴 분석기 (PatternAnalyzerProtocol) - LLM 기반 패턴 감지+불확실성 추출
-            question_generator: 질문 생성기 (QuestionGeneratorProtocol)
-            slack_client: Slack 클라이언트 (SlackClientProtocol)
-            response_handler: 응답 핸들러 (ResponseHandlerProtocol)
-            spec_builder: 명세서 빌더 (SpecBuilderProtocol)
-            slack_channel: Slack 채널 ID
+            name: 생성될 명세서 이름
+            description: 명세서 설명
+            slack_channel: Slack 채널 ID (None이면 Slack 스킵)
             verbose: 로그 출력 여부
         """
-        self._recorder = recorder
-        self._keyframe_extractor = keyframe_extractor
-        self._analyzer = analyzer
-        self._pattern_analyzer = pattern_analyzer
-        self._question_generator = question_generator
-        self._slack_client = slack_client
-        self._response_handler = response_handler
-        self._spec_builder = spec_builder
+        self._name = name
+        self._description = description
         self._slack_channel = slack_channel
         self._verbose = verbose
 
@@ -115,88 +105,111 @@ class Pipeline:
 
         try:
             # 1. Record
-            self._log("\n[1/7] 녹화 중...")
-            result.session = self._recorder.record(duration)
+            self._log("\n[1/6] 녹화 중...")
+            recorder = Recorder()
+            result.session = recorder.record(duration)
             self._log(f"  - 프레임: {len(result.session.frames)}개")
             self._log(f"  - 이벤트: {len(result.session.events)}개")
 
             # 2. Keyframe 추출
-            self._log("\n[2/7] 키프레임 추출 중...")
-            result.keyframes = self._keyframe_extractor.extract(result.session)
+            self._log("\n[2/6] 키프레임 추출 중...")
+            extractor = KeyframeExtractor()
+            result.keyframes = extractor.extract_pairs(result.session)
             self._log(f"  - 키프레임 쌍: {len(result.keyframes)}개")
 
             if not result.keyframes:
-                result.error = "키프레임이 없습니다"
+                result.error = "키프레임이 없습니다 (마우스 클릭이 감지되지 않음)"
+                result.stopped_at = "keyframe"
                 return result
 
             # 3. Analyze (VLM)
-            self._log("\n[3/7] AI 분석 중...")
-            result.actions = await self._analyzer.analyze_batch(result.keyframes)
-            self._log(f"  - 액션: {len(result.actions)}개")
+            self._log("\n[3/6] AI 분석 중...")
+            if not settings.anthropic_api_key:
+                result.error = "ANTHROPIC_API_KEY가 설정되지 않았습니다"
+                result.stopped_at = "analyze"
+                return result
+
+            analyzer = ClaudeAnalyzer()
+            self._log(f"  - 모델: {analyzer.model_name}")
+
+            # 예상 비용 표시
+            cost_info = analyzer.estimate_cost(result.keyframes)
+            self._log(f"  - 예상 비용: ${cost_info['total_cost_usd']:.4f}")
+
+            result.actions = await analyzer.analyze_batch(result.keyframes)
+            self._log(f"  - 분석된 액션: {len(result.actions)}개")
             for action in result.actions:
                 self._log(f"    - {action}")
 
             if not result.actions:
                 result.error = "분석된 액션이 없습니다"
+                result.stopped_at = "analyze"
                 return result
 
-            # 4. Pattern 감지 + 불확실성 분석 (LLM 기반)
-            self._log("\n[4/7] 패턴 감지 중 (LLM)...")
-            result.patterns = await self._pattern_analyzer.detect_patterns(result.actions)
-            self._log(f"  - 패턴: {len(result.patterns)}개")
-            total_uncertainties = sum(len(p.uncertainties) for p in result.patterns)
-            self._log(f"  - 불확실 지점: {total_uncertainties}개")
+            # 4. Pattern 감지 (LLM 기반)
+            self._log("\n[4/6] 패턴 감지 중 (LLM)...")
+            pattern_analyzer = ClaudePatternAnalyzer()
+            result.patterns = await pattern_analyzer.detect_patterns(result.actions)
+            self._log(f"  - 감지된 패턴: {len(result.patterns)}개")
             for pattern in result.patterns:
-                self._log(f"    - {pattern}")
+                self._log(f"    - {len(pattern.actions)}개 액션, {pattern.count}회 반복")
 
             if not result.patterns:
                 result.error = "감지된 패턴이 없습니다 (3회 이상 반복 필요)"
+                result.stopped_at = "pattern"
                 return result
 
             # 5. Question 생성
-            self._log("\n[5/7] HITL 질문 생성 중...")
-            result.questions = self._question_generator.generate_from_patterns(result.patterns)
-            self._log(f"  - 질문: {len(result.questions)}개")
+            self._log("\n[5/6] HITL 질문 생성 중...")
+            generator = QuestionGenerator()
+            result.questions = generator.generate_from_patterns(result.patterns)
+            self._log(f"  - 생성된 질문: {len(result.questions)}개")
             for q in result.questions:
-                self._log(f"    - [{q.type}] {q.text[:40]}...")
+                self._log(f"    - [{q.type.value}] {q.text[:50]}...")
 
-            # 6. Slack 전송 + Response 수집
-            self._log("\n[6/7] Slack 전송 및 응답 수집 중...")
-            for question in result.questions:
-                self._slack_client.send_question(self._slack_channel, question)
-
-            result.responses = self._response_handler.collect_responses(result.questions)
-            self._log(f"  - 응답: {len(result.responses)}개")
-
-            # 7. Spec 생성
-            self._log("\n[7/7] 명세서 생성 중...")
-            result.spec = self._spec_builder.build_from_pipeline(
-                patterns=result.patterns,
-                responses=result.responses,
-                session_id=result.session_id,
-            )
-            self._log(f"  - 워크플로우 단계: {len(result.spec.workflow)}개")
-            # decisions가 dict일 수도 있고 다른 구조일 수도 있음
-            if hasattr(result.spec.decisions, 'get'):
-                rules_count = len(result.spec.decisions.get('rules', []))
-            elif hasattr(result.spec.decisions, 'rules'):
-                rules_count = len(result.spec.decisions.rules)
-            elif isinstance(result.spec.decisions, list):
-                rules_count = len(result.spec.decisions)
+            # 6. Slack 전송 + Response 수집 (선택적)
+            if self._slack_channel and settings.slack_bot_token:
+                self._log("\n[6/6] Slack 전송 및 응답 수집 중...")
+                # TODO: 실제 Slack 연동 구현
+                # from shadow.slack.client import SlackClient
+                # client = SlackClient()
+                # for question in result.questions:
+                #     client.send_question(self._slack_channel, question)
+                # result.responses = client.collect_responses(result.questions)
+                self._log("  [경고] Slack 연동이 아직 구현되지 않았습니다")
+                result.stopped_at = "slack"
             else:
-                rules_count = 0
-            self._log(f"  - 의사결정 규칙: {rules_count}개")
+                self._log("\n[6/6] Slack 스킵 (토큰 없음 또는 채널 미지정)")
+                result.stopped_at = "question"
+
+            # 7. Spec 생성 (응답이 없어도 패턴 기반으로 생성)
+            self._log("\n[+] 명세서 생성 중...")
+            builder = SpecBuilder(name=self._name, description=self._description)
+
+            for pattern in result.patterns:
+                builder.add_pattern(pattern)
+
+            for question, response in result.responses:
+                builder.add_response(question, response)
+
+            builder.add_session(result.session_id)
+            result.spec = builder.build()
+
+            self._log(f"  - 워크플로우 단계: {len(result.spec.workflow)}개")
+            self._log(f"  - 의사결정 규칙: {len(result.spec.decisions)}개")
 
             result.success = True
 
         except Exception as e:
             result.error = str(e)
             self._log(f"\n[오류] {e}")
+            import traceback
+            traceback.print_exc()
 
         return result
 
     def run_sync(self, duration: float = 5.0) -> PipelineResult:
-        """동기식 파이프라인 실행 (asyncio.run 래퍼)
+        """동기식 파이프라인 실행
 
         Args:
             duration: 녹화 시간 (초)
@@ -205,3 +218,36 @@ class Pipeline:
             파이프라인 실행 결과
         """
         return asyncio.run(self.run(duration))
+
+
+def run_pipeline(
+    duration: float = 5.0,
+    name: str = "Workflow",
+    description: str = "",
+    slack_channel: str | None = None,
+    verbose: bool = True,
+) -> PipelineResult:
+    """파이프라인 실행 헬퍼 함수
+
+    Args:
+        duration: 녹화 시간 (초)
+        name: 명세서 이름
+        description: 명세서 설명
+        slack_channel: Slack 채널 ID (None이면 Slack 스킵)
+        verbose: 로그 출력 여부
+
+    Returns:
+        파이프라인 실행 결과
+
+    Examples:
+        >>> result = run_pipeline(duration=5.0, name="MyWorkflow")
+        >>> if result.success:
+        ...     print(f"패턴 {len(result.patterns)}개 감지")
+    """
+    pipeline = Pipeline(
+        name=name,
+        description=description,
+        slack_channel=slack_channel,
+        verbose=verbose,
+    )
+    return pipeline.run_sync(duration)
