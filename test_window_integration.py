@@ -14,14 +14,16 @@ if __name__ == "__main__":
 
     print(f"\n수집된 이벤트: {len(events)}개")
     for i, event in enumerate(events, 1):
-        app_info = (
-            f"in {event.window_info.app_name}" if event.window_info else "no window info"
-        )
-        print(f"{i}. {event.event_type.value} {app_info}")
+        # F-03: app_name, window_title 직접 사용
+        app_info = f"in {event.app_name}" if event.app_name else "no window info"
+        title_info = f"({event.window_title})" if event.window_title else ""
+        print(f"{i}. {event.event_type.value} {app_info} {title_info}")
 
-    # window_info 필드 존재 확인
+    # F-03 필드 존재 확인
     if events:
-        print(f"\n✓ window_info 필드 존재: {hasattr(events[0], 'window_info')}")
-        if events[0].window_info:
-            print(f"✓ app_name 필드 존재: {hasattr(events[0].window_info, 'app_name')}")
-            print(f"✓ app_name 값: {events[0].window_info.app_name}")
+        print(f"\n✓ app_name 필드 존재: {hasattr(events[0], 'app_name')}")
+        print(f"✓ window_title 필드 존재: {hasattr(events[0], 'window_title')}")
+        if events[0].app_name:
+            print(f"✓ app_name 값: {events[0].app_name}")
+        if events[0].window_title:
+            print(f"✓ window_title 값: {events[0].window_title}")

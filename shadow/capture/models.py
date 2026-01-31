@@ -94,7 +94,6 @@ class InputEvent:
     # F-03: 활성 윈도우 정보
     app_name: str | None = None  # 애플리케이션 이름
     window_title: str | None = None  # 윈도우 타이틀
-    window_info: WindowInfo | None = None  # 활성 윈도우 정보
 
 
 @dataclass
