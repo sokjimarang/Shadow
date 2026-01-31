@@ -8,24 +8,37 @@
 
 import base64
 import json
+import logging
 
 import anthropic
+
+logger = logging.getLogger(__name__)
 
 from shadow.analysis.base import LabeledAction, AnalyzerBackend, BaseVisionAnalyzer
 from shadow.capture.models import KeyframePair
 from shadow.config import settings
 
 # Before/After 비교 분석용 시스템 프롬프트 (캐싱 대상)
-SYSTEM_PROMPT = """당신은 GUI 스크린샷의 Before/After를 비교 분석하여 사용자 동작과 그 결과를 식별하는 전문가입니다.
+# Anthropic Prompt Best Practices 적용: XML 태그 구조화, 컨텍스트 제공, Multishot 예시
+SYSTEM_PROMPT = """<role>
+당신은 GUI 스크린샷의 Before/After를 비교 분석하여 사용자 동작과 그 결과를 식별하는 전문가입니다.
+</role>
 
-## 분석 규칙
+<context>
+이 분석은 업무 자동화 명세서 생성 시스템의 첫 단계입니다.
+분석 결과는 반복 패턴 감지 → HITL 질문 생성 → 자동화 명세서 작성에 사용됩니다.
+정확한 상태 변화 감지가 후속 단계의 품질을 결정합니다.
+</context>
+
+<instructions>
 1. 첫 번째 이미지(Before): 클릭 직전 화면 상태
 2. 두 번째 이미지(After): 클릭 직후 화면 상태
 3. 빨간 원: 클릭 위치 (Before 이미지에 표시)
-4. 두 이미지를 비교하여 화면 변화 분석
+4. 두 이미지를 비교하여 화면 변화를 구체적으로 분석
+</instructions>
 
-## 출력 형식
-반드시 다음 JSON 형식으로만 응답하세요:
+<output_format>
+다음 JSON 형식으로만 응답하세요:
 {
     "action": "click|scroll|type|drag",
     "target": "클릭한 UI 요소 이름",
@@ -35,11 +48,27 @@ SYSTEM_PROMPT = """당신은 GUI 스크린샷의 Before/After를 비교 분석�
     "after_state": "클릭 후 화면/요소 상태",
     "state_change": "클릭으로 인한 변화 요약"
 }
+</output_format>
 
-## 주의사항
+<example>
+입력: Chrome 브라우저에서 "새 탭" 버튼 클릭
+출력:
+{
+    "action": "click",
+    "target": "새 탭 버튼 (+)",
+    "context": "Chrome 브라우저",
+    "description": "브라우저 상단의 새 탭 버튼을 클릭",
+    "before_state": "탭 1개 열림 (Google 검색)",
+    "after_state": "탭 2개 열림 (새 탭 추가됨)",
+    "state_change": "새 탭이 생성되어 총 2개 탭이 됨"
+}
+</example>
+
+<guidelines>
 - JSON 외의 텍스트를 출력하지 마세요
-- state_change는 구체적인 변화를 기술하세요 (예: "드롭다운 메뉴가 열림", "새 탭이 생성됨")
-- 변화가 없으면 state_change에 "변화 없음"이라고 작성하세요"""
+- state_change는 구체적인 변화를 기술 (예: "드롭다운 메뉴가 열림", "새 탭이 생성됨")
+- 변화가 없으면 state_change에 "변화 없음"이라고 작성
+</guidelines>"""
 
 
 class ClaudeAnalyzer(BaseVisionAnalyzer):
@@ -72,7 +101,10 @@ class ClaudeAnalyzer(BaseVisionAnalyzer):
         self._max_image_size = max_image_size or settings.claude_max_image_size
         self._use_cache = use_cache if use_cache is not None else settings.claude_use_cache
 
-        self._client = anthropic.Anthropic(api_key=self._api_key)
+        self._client = anthropic.Anthropic(
+            api_key=self._api_key,
+            timeout=30.0,
+        )
 
     @property
     def backend(self) -> AnalyzerBackend:
@@ -136,6 +168,7 @@ class ClaudeAnalyzer(BaseVisionAnalyzer):
         if self._use_cache:
             system_content[0]["cache_control"] = {"type": "ephemeral"}
 
+        # Prefill: JSON 형식 출력 보장을 위해 응답 시작 부분 지정
         response = self._client.messages.create(
             model=self._model,
             max_tokens=700,
@@ -164,11 +197,16 @@ class ClaudeAnalyzer(BaseVisionAnalyzer):
                         },
                         {"type": "text", "text": user_message},
                     ],
-                }
+                },
+                {
+                    "role": "assistant",
+                    "content": "{",  # Prefill로 JSON 시작
+                },
             ],
         )
 
-        return self._parse_pair_response(response.content[0].text)
+        # Prefill 문자를 포함하여 파싱
+        return self._parse_pair_response("{" + response.content[0].text)
 
     async def analyze_batch(self, pairs: list[KeyframePair]) -> list[LabeledAction]:
         """여러 키프레임 쌍 배치 분석
@@ -213,7 +251,8 @@ class ClaudeAnalyzer(BaseVisionAnalyzer):
                 after_state=data.get("after_state"),
                 state_change=data.get("state_change"),
             )
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.warning(f"JSON 파싱 실패: {e}, 원본: {response_text[:100]}")
             return LabeledAction(
                 action="unknown",
                 target="unknown",
