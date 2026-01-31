@@ -17,6 +17,7 @@ class AnalyzerBackend(Enum):
     """지원하는 분석기 백엔드"""
 
     CLAUDE = "claude"
+    NEMOTRON = "nemotron"
 
 
 class BaseVisionAnalyzer(ABC):

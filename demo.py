@@ -138,7 +138,7 @@ def main() -> None:
     parser.add_argument(
         "--backend",
         type=str,
-        choices=["claude"],
+        choices=["claude", "nemotron"],
         default="claude",
         help="사용할 Vision AI 백엔드 (기본: claude)",
     )

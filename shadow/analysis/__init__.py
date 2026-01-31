@@ -2,10 +2,12 @@
 
 지원 백엔드:
 - Claude Opus 4.5
+- NVIDIA NIM Nemotron VL
 """
 
 from shadow.analysis.base import AnalyzerBackend, BaseVisionAnalyzer
 from shadow.analysis.claude import ClaudeAnalyzer
+from shadow.analysis.nemotron import NemotronAnalyzer
 from shadow.analysis.models import (
     ActionType,
     LabeledAction,
@@ -36,6 +38,8 @@ def create_analyzer(
 
     if backend == AnalyzerBackend.CLAUDE:
         return ClaudeAnalyzer(**kwargs)
+    elif backend == AnalyzerBackend.NEMOTRON:
+        return NemotronAnalyzer(**kwargs)
     else:
         raise ValueError(f"지원하지 않는 백엔드: {backend}")
 
@@ -51,5 +55,6 @@ __all__ = [
     "BaseVisionAnalyzer",
     # 분석기 구현체
     "ClaudeAnalyzer",
+    "NemotronAnalyzer",
     "create_analyzer",
 ]

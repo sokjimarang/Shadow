@@ -19,6 +19,9 @@ dependencies = [
     # Vision AI - Claude
     "anthropic>=0.40.0",
 
+    # Vision AI - NVIDIA NIM (OpenAI 호환)
+    "openai>=1.0.0",
+
     # 패턴 분석
     "numpy>=2.0.0",
     "python-levenshtein>=0.26.0",

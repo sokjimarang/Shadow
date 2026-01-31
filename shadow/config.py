@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     claude_max_image_size: int = 1024  # 이미지 최대 크기 (토큰 절약)
     claude_use_cache: bool = True  # 프롬프트 캐싱 사용
 
+    # NVIDIA NIM API (Nemotron VL)
+    nvidia_api_key: str = ""
+    nemotron_model: str = "nvidia/nemotron-nano-12b-v2-vl"
+    nemotron_base_url: str = "https://integrate.api.nvidia.com/v1"
+    nemotron_max_image_size: int = 1024
+
     # 패턴 분석 설정 (LLM 기반)
     pattern_analyzer_backend: str = "claude"  # 패턴 분석기 백엔드
     pattern_max_patterns: int = 5  # 최대 감지 패턴 수
