@@ -810,5 +810,294 @@ class TestInterpretedAnswerRepository:
         print(f"\n✓ 명세서 반영 표시 성공")
 
 
+# ====== Observation Repository 테스트 (F-01, F-02) ======
+
+
+class TestObservationRepository:
+    """Observation CRUD 테스트 (Screenshot, InputEvent, RawObservation)"""
+
+    def test_create_screenshot(self, db_client, test_user_id, cleanup_sessions):
+        """스크린샷 저장 테스트 (F-01)"""
+        session_repo = SessionRepository(db_client)
+        obs_repo = ObservationRepository(db_client)
+
+        # 세션 생성
+        session = session_repo.create_session(test_user_id)
+
+        # 스크린샷 저장
+        screenshot_id = str(uuid.uuid4())
+        trigger_event_id = str(uuid.uuid4())
+        screenshot = obs_repo.create_screenshot(
+            screenshot_id=screenshot_id,
+            session_id=session["id"],
+            timestamp=datetime.utcnow().isoformat(),
+            screenshot_type="before",
+            data="base64_encoded_data",
+            thumbnail="base64_thumbnail",
+            resolution={"width": 1920, "height": 1080},
+            trigger_event_id=trigger_event_id,
+        )
+
+        assert screenshot is not None
+        assert screenshot["type"] == "before"
+        assert screenshot["resolution"]["width"] == 1920
+
+        print(f"\n✓ 스크린샷 저장 성공 (F-01): {screenshot_id}")
+
+    def test_create_input_event(self, db_client, test_user_id, cleanup_sessions):
+        """입력 이벤트 저장 테스트 (F-02)"""
+        session_repo = SessionRepository(db_client)
+        obs_repo = ObservationRepository(db_client)
+
+        # 세션 생성
+        session = session_repo.create_session(test_user_id)
+
+        # 입력 이벤트 저장
+        event_id = str(uuid.uuid4())
+        event = obs_repo.create_input_event(
+            event_id=event_id,
+            session_id=session["id"],
+            timestamp=datetime.utcnow().isoformat(),
+            event_type="mouse_click",
+            position={"x": 100, "y": 200},
+            button="left",
+            active_window={"title": "Test Window", "app_name": "Chrome"},
+        )
+
+        assert event is not None
+        assert event["type"] == "mouse_click"
+        assert event["position"]["x"] == 100
+        assert event["active_window"]["app_name"] == "Chrome"
+
+        print(f"\n✓ 입력 이벤트 저장 성공 (F-02): {event_id}")
+
+    def test_create_observation(self, db_client, test_user_id, cleanup_sessions):
+        """관찰 데이터 생성 테스트 (Before/After + Event)"""
+        session_repo = SessionRepository(db_client)
+        obs_repo = ObservationRepository(db_client)
+
+        # 세션 생성
+        session = session_repo.create_session(test_user_id)
+
+        # 이벤트 먼저 생성
+        event_id = str(uuid.uuid4())
+        obs_repo.create_input_event(
+            event_id=event_id,
+            session_id=session["id"],
+            timestamp=datetime.utcnow().isoformat(),
+            event_type="mouse_click",
+            position={"x": 150, "y": 250},
+            button="left",
+            active_window={"title": "Test", "app_name": "App"},
+        )
+
+        # Before/After 스크린샷 생성
+        before_id = str(uuid.uuid4())
+        after_id = str(uuid.uuid4())
+
+        obs_repo.create_screenshot(
+            screenshot_id=before_id,
+            session_id=session["id"],
+            timestamp=datetime.utcnow().isoformat(),
+            screenshot_type="before",
+            data="before_data",
+            thumbnail="before_thumb",
+            resolution={"width": 1920, "height": 1080},
+            trigger_event_id=event_id,
+        )
+
+        obs_repo.create_screenshot(
+            screenshot_id=after_id,
+            session_id=session["id"],
+            timestamp=datetime.utcnow().isoformat(),
+            screenshot_type="after",
+            data="after_data",
+            thumbnail="after_thumb",
+            resolution={"width": 1920, "height": 1080},
+            trigger_event_id=event_id,
+        )
+
+        # 관찰 데이터 생성
+        observation_id = str(uuid.uuid4())
+        observation = obs_repo.create_observation(
+            session_id=session["id"],
+            observation_id=observation_id,
+            timestamp=datetime.utcnow().isoformat(),
+            before_screenshot_id=before_id,
+            after_screenshot_id=after_id,
+            event_id=event_id,
+        )
+
+        assert observation is not None
+        assert observation["before_screenshot_id"] == before_id
+        assert observation["after_screenshot_id"] == after_id
+        assert observation["event_id"] == event_id
+
+        print(f"\n✓ 관찰 데이터 생성 성공: {observation_id}")
+
+    def test_get_session_observations(self, db_client, test_user_id, cleanup_sessions):
+        """세션의 관찰 데이터 조회 테스트"""
+        session_repo = SessionRepository(db_client)
+        obs_repo = ObservationRepository(db_client)
+
+        # 세션 생성
+        session = session_repo.create_session(test_user_id)
+
+        # 관찰 데이터 2개 생성
+        for i in range(2):
+            event_id = str(uuid.uuid4())
+            before_id = str(uuid.uuid4())
+            after_id = str(uuid.uuid4())
+            obs_id = str(uuid.uuid4())
+
+            obs_repo.create_input_event(
+                event_id=event_id,
+                session_id=session["id"],
+                timestamp=datetime.utcnow().isoformat(),
+                event_type="mouse_click",
+                position={"x": i * 100, "y": i * 100},
+                button="left",
+                active_window={"title": f"Test {i}", "app_name": "App"},
+            )
+
+            obs_repo.create_screenshot(
+                screenshot_id=before_id,
+                session_id=session["id"],
+                timestamp=datetime.utcnow().isoformat(),
+                screenshot_type="before",
+                data="data",
+                thumbnail="thumb",
+                resolution={"width": 1920, "height": 1080},
+                trigger_event_id=event_id,
+            )
+
+            obs_repo.create_screenshot(
+                screenshot_id=after_id,
+                session_id=session["id"],
+                timestamp=datetime.utcnow().isoformat(),
+                screenshot_type="after",
+                data="data",
+                thumbnail="thumb",
+                resolution={"width": 1920, "height": 1080},
+                trigger_event_id=event_id,
+            )
+
+            obs_repo.create_observation(
+                session_id=session["id"],
+                observation_id=obs_id,
+                timestamp=datetime.utcnow().isoformat(),
+                before_screenshot_id=before_id,
+                after_screenshot_id=after_id,
+                event_id=event_id,
+            )
+
+        # 관찰 데이터 조회
+        observations = obs_repo.get_session_observations(session["id"])
+
+        assert len(observations) >= 2
+
+        print(f"\n✓ 세션 관찰 데이터 조회 성공: {len(observations)}개")
+
+
+# ====== E2E Workflow 테스트 ======
+
+
+class TestE2ECaptureToDatabaseWorkflow:
+    """F-01/F-02 E2E: 캡처 → 저장 → DB 조회 워크플로우"""
+
+    def test_capture_to_database_workflow(self, db_client, test_user_id, cleanup_sessions):
+        """KeyframePair → Screenshot → Observation → DB 조회 전체 워크플로우"""
+        session_repo = SessionRepository(db_client)
+        obs_repo = ObservationRepository(db_client)
+
+        # 1. 세션 생성
+        session = session_repo.create_session(test_user_id)
+        session_id = session["id"]
+        print(f"\n1. 세션 생성: {session_id}")
+
+        # 2. 입력 이벤트 생성 (F-02)
+        event_id = str(uuid.uuid4())
+        event = obs_repo.create_input_event(
+            event_id=event_id,
+            session_id=session_id,
+            timestamp=datetime.utcnow().isoformat(),
+            event_type="mouse_click",
+            position={"x": 300, "y": 400},
+            button="left",
+            active_window={"title": "E2E Test Window", "app_name": "TestApp"},
+        )
+        print(f"2. 입력 이벤트 생성 (F-02): {event_id}")
+
+        # 3. Before/After 스크린샷 생성 (F-01)
+        before_screenshot_id = str(uuid.uuid4())
+        after_screenshot_id = str(uuid.uuid4())
+
+        before_screenshot = obs_repo.create_screenshot(
+            screenshot_id=before_screenshot_id,
+            session_id=session_id,
+            timestamp=datetime.utcnow().isoformat(),
+            screenshot_type="before",
+            data="before_image_base64_data",
+            thumbnail="before_thumbnail_base64",
+            resolution={"width": 1920, "height": 1080},
+            trigger_event_id=event_id,
+        )
+
+        after_screenshot = obs_repo.create_screenshot(
+            screenshot_id=after_screenshot_id,
+            session_id=session_id,
+            timestamp=datetime.utcnow().isoformat(),
+            screenshot_type="after",
+            data="after_image_base64_data",
+            thumbnail="after_thumbnail_base64",
+            resolution={"width": 1920, "height": 1080},
+            trigger_event_id=event_id,
+        )
+        print(f"3. Before/After 스크린샷 생성 (F-01): {before_screenshot_id}, {after_screenshot_id}")
+
+        # 4. 관찰 데이터 생성 (RawObservation)
+        observation_id = str(uuid.uuid4())
+        observation = obs_repo.create_observation(
+            session_id=session_id,
+            observation_id=observation_id,
+            timestamp=datetime.utcnow().isoformat(),
+            before_screenshot_id=before_screenshot_id,
+            after_screenshot_id=after_screenshot_id,
+            event_id=event_id,
+        )
+        print(f"4. 관찰 데이터 생성: {observation_id}")
+
+        # 5. 세션 카운트 업데이트
+        session_repo.increment_counts(session_id, event_count=1, observation_count=1)
+        print("5. 세션 카운트 업데이트")
+
+        # 6. DB 조회 검증
+        # 세션 확인
+        final_session = session_repo.get_session(session_id)
+        assert final_session["event_count"] == 1
+        assert final_session["observation_count"] == 1
+        print(f"6a. 세션 검증 완료: events={1}, observations={1}")
+
+        # 관찰 데이터 확인
+        observations = obs_repo.get_session_observations(session_id)
+        assert len(observations) >= 1
+        assert observations[0]["before_screenshot_id"] == before_screenshot_id
+        assert observations[0]["after_screenshot_id"] == after_screenshot_id
+        assert observations[0]["event_id"] == event_id
+        print(f"6b. 관찰 데이터 검증 완료: {len(observations)}개")
+
+        # PRD TC-01 Pass 조건: Before/After 이미지 2개 저장 확인
+        assert before_screenshot["type"] == "before"
+        assert after_screenshot["type"] == "after"
+        print("6c. TC-01 Pass: Before/After 이미지 2개 저장 ✅")
+
+        # PRD TC-02 Pass 조건: 이벤트 JSON 저장 확인
+        assert event["type"] == "mouse_click"
+        assert event["position"]["x"] == 300
+        print("6d. TC-02 Pass: 이벤트 JSON 저장 ✅")
+
+        print("\n✓ E2E 워크플로우 테스트 성공 (F-01 + F-02 통합)!")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
