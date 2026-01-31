@@ -4,6 +4,8 @@ F-03: 현재 활성화된 윈도우의 앱 이름과 윈도우 타이틀을 수�
 """
 
 import logging
+import os
+import sys
 
 from shadow.capture.models import WindowInfo
 
@@ -22,6 +24,7 @@ try:
         CGMainDisplayID,
         CGWindowListCopyWindowInfo,
         kCGNullWindowID,
+        kCGWindowListExcludeDesktopElements,
         kCGWindowListOptionOnScreenOnly,
     )
 
@@ -57,6 +60,10 @@ class WindowInfoCollector:
             RuntimeError: 활성 윈도우 정보를 가져올 수 없는 경우
         """
         try:
+            # 전략: NSWorkspace + Quartz 조합
+            # 1. NSWorkspace로 활성 앱 PID 가져오기
+            # 2. Quartz로 해당 PID의 윈도우 타이틀 찾기
+
             active_app = self._workspace.frontmostApplication()
 
             if active_app is None:
@@ -88,36 +95,93 @@ class WindowInfoCollector:
             return self.get_active_window()
 
         try:
+            frontmost_app = self._workspace.frontmostApplication()
+            frontmost_pid = (
+                frontmost_app.processIdentifier() if frontmost_app else None
+            )
             window_list = CGWindowListCopyWindowInfo(
-                kCGWindowListOptionOnScreenOnly, kCGNullWindowID
+                kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
+                kCGNullWindowID,
             )
 
             if not window_list:
                 return self.get_active_window()
 
-            # Quartz 좌표계는 좌하단 기준이므로 y를 반전 (단일 모니터 가정)
-            display_bounds = CGDisplayBounds(CGMainDisplayID())
-            display_height = int(display_bounds.size.height)
-            cg_y = display_height - y
-
+            usable_windows = []
             for window in window_list:
                 if not self._is_usable_window(window):
                     continue
                 bounds = window.get("kCGWindowBounds", {})
                 if not bounds:
                     continue
+                usable_windows.append((window, bounds))
 
-                wx = int(bounds.get("X", 0))
-                wy = int(bounds.get("Y", 0))
-                ww = int(bounds.get("Width", 0))
-                wh = int(bounds.get("Height", 0))
+            # Quartz 좌표계는 좌하단 기준이므로 y를 반전 (단일 모니터 가정)
+            display_bounds = CGDisplayBounds(CGMainDisplayID())
+            display_height = int(display_bounds.size.height)
+            cg_y = display_height - y
 
-                if wx <= x <= wx + ww and wy <= cg_y <= wy + wh:
-                    return self._window_info_from_window_dict(window)
+            def find_window_at_point(px: int, py: int) -> dict | None:
+                for window, bounds in usable_windows:
+                    wx = int(bounds.get("X", 0))
+                    wy = int(bounds.get("Y", 0))
+                    ww = int(bounds.get("Width", 0))
+                    wh = int(bounds.get("Height", 0))
+
+                    if wx <= px <= wx + ww and wy <= py <= wy + wh:
+                        return window
+                return None
+
+            direct_match = find_window_at_point(x, y)
+            inverted_match = find_window_at_point(x, cg_y)
+
+            selected = None
+            if direct_match and inverted_match and frontmost_pid is not None:
+                direct_pid = direct_match.get("kCGWindowOwnerPID")
+                inverted_pid = inverted_match.get("kCGWindowOwnerPID")
+                if direct_pid == frontmost_pid:
+                    selected = direct_match
+                elif inverted_pid == frontmost_pid:
+                    selected = inverted_match
+                else:
+                    selected = direct_match
+            else:
+                selected = direct_match or inverted_match
+
+            if selected:
+                return self._window_info_from_window_dict(selected)
 
             return self.get_active_window()
         except Exception:
             return self.get_active_window()
+
+    def _get_active_window_via_quartz(self) -> WindowInfo | None:
+        """Quartz API로 활성 윈도우 정보 가져오기 (스레드 안전)
+
+        Note: 현재 사용되지 않음 - frontmostApplication() 사용 중
+        """
+        try:
+            window_list = CGWindowListCopyWindowInfo(
+                kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
+                kCGNullWindowID,
+            )
+
+            if not window_list:
+                return None
+
+            # kCGWindowLayer가 0인 윈도우 중 가장 먼저 나오는 것이 활성 윈도우
+            for window in window_list:
+                if not self._is_usable_window(window):
+                    continue
+
+                # Layer 0 = 일반 애플리케이션 윈도우
+                layer = window.get("kCGWindowLayer", 0)
+                if layer == 0:
+                    return self._window_info_from_window_dict(window)
+
+            return None
+        except Exception:
+            return None
 
     def _get_window_title(self, process_id: int) -> str:
         """프로세스 ID로 윈도우 타이틀 가져오기"""
@@ -126,7 +190,8 @@ class WindowInfoCollector:
 
         try:
             window_list = CGWindowListCopyWindowInfo(
-                kCGWindowListOptionOnScreenOnly, kCGNullWindowID
+                kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
+                kCGNullWindowID,
             )
 
             if window_list:
@@ -177,7 +242,7 @@ class WindowInfoCollector:
         if layer != 0:
             return False
 
-        owner = window.get("kCGWindowOwnerName") or ""
+        owner = (window.get("kCGWindowOwnerName") or "").strip()
         if owner in {
             "Window Server",
             "Dock",
@@ -185,6 +250,8 @@ class WindowInfoCollector:
             "Notification Center",
             "스크린샷",
             "Screenshot",
+            "TextInputMenuAgent",
+            "SystemUIServer",
         }:
             return False
 
@@ -244,3 +311,27 @@ def get_window_at_point(x: int, y: int) -> WindowInfo:
     except Exception:
         logger.exception("Active window info unexpected error")
         return WindowInfo(app_name="Unknown", window_title="Unknown")
+
+
+def get_current_process_info() -> dict[str, str | int | None]:
+    """현재 프로세스의 앱/번들 정보를 반환 (권한 안내용)"""
+    pid = os.getpid()
+    app_name = None
+    bundle_id = None
+
+    if HAS_APPKIT:
+        try:
+            running_app = NSRunningApplication.runningApplicationWithProcessIdentifier(pid)
+            if running_app:
+                app_name = running_app.localizedName()
+                bundle_id = running_app.bundleIdentifier()
+        except Exception:
+            app_name = None
+            bundle_id = None
+
+    return {
+        "pid": pid,
+        "app_name": app_name,
+        "bundle_id": bundle_id,
+        "executable": sys.executable,
+    }
