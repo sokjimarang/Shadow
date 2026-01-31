@@ -52,14 +52,19 @@
 
 ### capture/ (화면 캡처)
 - `screen.py`: MSS 기반 화면 캡처 ✅
+  - 테스트: `tests/test_screen.py` (9개 테스트 통과)
 - `input_events.py`: pynput 마우스/키보드 이벤트 ✅
+  - 테스트: `tests/test_input_events.py` (16개 테스트 통과)
 - `window.py`: macOS 활성 윈도우 정보 ✅ (macOS 전용)
+  - 테스트: `tests/test_window.py` (기존)
 - `recorder.py`: 캡처 + 이벤트 동기화 ✅
+  - 테스트: `tests/test_recorder.py` (12개 테스트 통과)
 - `storage.py`: 세션 저장 ✅
 - `models.py`: Frame, InputEvent, KeyframePair ✅
 
 ### preprocessing/ (키프레임 추출)
 - `keyframe.py`: 클릭 전후 키프레임 쌍 추출 ✅
+  - 테스트: `tests/test_keyframe.py` (10개 테스트 통과)
 
 ### analysis/ (VLM 분석)
 - `claude.py`: Claude 분석기 ✅ (**배치 모드 추가**, 22~28% 비용 절감, 57~67% 시간 단축)
