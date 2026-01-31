@@ -25,18 +25,17 @@ shadow/
 ├── preprocessing/
 │   └── keyframe.py    # KeyframeExtractor - 클릭 시점 프레임 추출
 ├── analysis/          # Analysis Layer
-│   ├── base.py        # BaseVisionAnalyzer, ActionLabel, AnalyzerBackend
+│   ├── base.py        # BaseVisionAnalyzer, AnalyzerBackend
 │   ├── claude.py      # ClaudeAnalyzer - Claude Opus 4.5
 │   ├── gemini.py      # GeminiAnalyzer - Gemini 2.0 Flash
-│   ├── prompts.py     # 프롬프트 템플릿
 │   └── models.py      # LabeledAction, SessionSequence
 ├── patterns/          # Pattern Layer
 │   ├── detector.py    # PatternDetector - 반복 패턴 감지
 │   ├── similarity.py  # 액션 유사도 계산
-│   ├── uncertainties.py # Uncertainty (dataclass)
-│   └── models.py      # DetectedPattern, ActionTemplate, Variation
+│   └── models.py      # DetectedPattern, Uncertainty, ActionTemplate, Variation
 ├── hitl/              # HITL Layer
-│   └── models.py      # HITLQuestion, HITLAnswer, InterpretedAnswer
+│   ├── generator.py   # QuestionGenerator - 질문 생성기
+│   └── models.py      # Question, Response, InterpretedAnswer
 ├── spec/              # Spec Layer
 │   └── models.py      # AgentSpec, SpecHistory
 ├── core/              # System Layer
@@ -63,24 +62,18 @@ shadow/
 | Layer | 모델 | 설명 |
 |-------|------|------|
 | Raw Data | `Screenshot`, `InputEventRecord`, `RawObservation` | 화면 캡처 + 입력 이벤트 |
-| Analysis | `LabeledAction` (= `ActionLabel`), `SessionSequence` | VLM 분석 결과 |
-| Pattern | `DetectedPattern` (= `Pattern`), `Uncertainty`, `ActionTemplate` | 반복 패턴 |
-| HITL | `Question` (= `HITLQuestion`), `Response` (= `HITLAnswer`) | 사용자 확인 |
+| Analysis | `LabeledAction`, `SessionSequence` | VLM 분석 결과 |
+| Pattern | `DetectedPattern`, `Uncertainty`, `ActionTemplate` | 반복 패턴 |
+| HITL | `Question`, `Response`, `InterpretedAnswer` | 사용자 확인 |
 | Spec | `Spec`, `AgentSpec`, `SpecHistory` | 자동화 명세서 |
 | System | `Session`, `User`, `Config` | 시스템 설정 |
-
-**하위 호환성**: 기존 이름도 별칭으로 사용 가능
-- `ActionLabel` → `LabeledAction`
-- `Pattern` → `DetectedPattern`
-- `HITLQuestion` → `Question`
-- `HITLAnswer` → `Response`
 
 ```python
 # 사용 예시
 from shadow.capture import Screenshot, RawObservation
-from shadow.analysis import LabeledAction, ActionLabel  # 둘 다 동일
-from shadow.patterns import DetectedPattern, Pattern  # 둘 다 동일
-from shadow.hitl import Question, Response
+from shadow.analysis import LabeledAction
+from shadow.patterns import DetectedPattern, Uncertainty
+from shadow.hitl import Question, Response, QuestionGenerator
 from shadow.spec import Spec, AgentSpec, SpecHistory
 from shadow.core import Session, User, Config
 ```
@@ -172,8 +165,8 @@ uv run pytest
 |------|----------|----------|------|
 | 1-1 | `python -c "from shadow.capture.window import get_active_window; print(get_active_window())"` | WindowInfo 객체 반환 | ✅ |
 | 1-2 | `python -c "from shadow.capture.models import InputEvent; e = InputEvent(0, None, app_name='Test'); print(e.app_name)"` | 'Test' 출력 | ✅ |
-| 1-3 | `python -c "from shadow.patterns.uncertainties import Uncertainty, UncertaintyType; print(UncertaintyType.CONDITION)"` | CONDITION 출력 | ✅ |
-| 1-4 | `python -c "from shadow.patterns.detector import Pattern; p = Pattern([], [], 0); print(hasattr(p, 'uncertainties'))"` | True 출력 | ✅ |
+| 1-3 | `python -c "from shadow.patterns.models import Uncertainty, UncertaintyType; print(UncertaintyType.CONDITION)"` | CONDITION 출력 | ✅ |
+| 1-4 | `python -c "from shadow.patterns.models import DetectedPattern; p = DetectedPattern(actions=[]); print(hasattr(p, 'uncertainties'))"` | True 출력 | ✅ |
 | 1-5 | `python -c "from shadow.hitl.models import Question, QuestionType; print(QuestionType.HYPOTHESIS)"` | HYPOTHESIS 출력 | ✅ |
 | 1-6 | `python -c "from shadow.spec.models import Spec, DecisionRule; print(DecisionRule)"` | class 출력 | ✅ |
 
@@ -208,7 +201,7 @@ uv run pytest
 | TC ID | 테스트 항목 | 검증 방법 | Pass 조건 | 상태 |
 |-------|------------|----------|----------|------|
 | TC-01 | 화면 캡처 | 클릭 후 outputs/ 확인 | before.png, after.png 존재 | ✅ (mock) |
-| TC-02 | 행동 라벨링 | Before/After 분석 | semantic_label 포함된 ActionLabel | ✅ (mock) |
+| TC-02 | 행동 라벨링 | Before/After 분석 | semantic_label 포함된 LabeledAction | ✅ (mock) |
 | TC-03 | 패턴 감지 | 3개 세션 입력 | Pattern 1개+, uncertainties 포함 | ✅ |
 | TC-04 | 질문 생성 | 패턴 입력 | Question 2개+ | ✅ |
 | TC-05 | Slack 전송 | `shadow test-slack` | 메시지 ts 반환 | ⏳ (토큰 필요) |
@@ -223,13 +216,14 @@ uv run pytest
 
 - **데이터 모델 v1.1 전체 마이그레이션** (Pydantic v2)
   - 모든 레거시 dataclass를 Pydantic으로 통합
-  - `ActionLabel` → `LabeledAction` (별칭 유지)
-  - `Pattern` → `DetectedPattern` (별칭 유지)
+  - 레거시 별칭 완전 제거 (`ActionLabel`, `Pattern`, `HITLQuestion` 등)
+  - `LabeledAction`, `DetectedPattern`, `Question`, `Response` 사용
   - `Uncertainty` dataclass → Pydantic `Uncertainty`
-  - `Question`, `Response` → Pydantic 통합
   - `Spec`, `WorkflowStep`, `DecisionRule` → Pydantic 통합
   - 내부 처리용 `Frame`, `Keyframe` 등은 numpy array 때문에 dataclass 유지
 - `shadow/core/` 모듈 추가 (`Session`, `User`, `Config`)
+- `shadow/hitl/generator.py` 추가 (질문 생성기)
+- `shadow/patterns/uncertainties.py` 삭제 (models.py로 통합)
 
 ### 2025-01-31
 
