@@ -44,10 +44,10 @@
 ## F-03 활성 윈도우 정보
 
 - **현재 구현**
-  - macOS 기반 활성 앱/창 타이틀 수집: `shadow/capture/window.py`
+  - macOS 기반 활성 앱/창 타이틀 수집 (macOS 전용): `shadow/capture/window.py`
   - 이벤트 생성 시 app_name/window_title 포함: `shadow/capture/input_events.py`
 - **PRD 기준**
-  - app_name 필드 존재
+  - app_name 필드 존재 (macOS 전용)
 - **부족/갭**
   - 비-macOS 환경은 "Unknown" 반환 (정확성 검증 불가)
 - **앞으로 구현해야 할 부분**

@@ -211,7 +211,7 @@ OBSERVE → ANALYZE → CLARIFY → PROCESS → NOTIFY → (반복)
 - 화면 변화 (Before/After 스크린샷)
 - 마우스 이벤트 (클릭 위치, 타입)
 - 키보드 이벤트 (입력 내용, 단축키)
-- 활성 윈도우 정보 (어떤 앱에서 작업 중인지)
+- 활성 윈도우 정보 (어떤 앱에서 작업 중인지, macOS 전용)
 
 ### 2. ANALYZE (분석)
 

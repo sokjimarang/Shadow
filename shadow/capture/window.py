@@ -3,7 +3,11 @@
 F-03: 현재 활성화된 윈도우의 앱 이름과 윈도우 타이틀을 수집합니다.
 """
 
+import logging
+
 from shadow.capture.models import WindowInfo
+
+logger = logging.getLogger(__name__)
 
 try:
     from AppKit import NSWorkspace
@@ -115,7 +119,12 @@ def get_active_window() -> WindowInfo:
     try:
         collector = WindowInfoCollector()
         return collector.get_active_window()
-    except RuntimeError:
+    except RuntimeError as exc:
+        logger.warning(
+            "Active window info unavailable (macOS only): %s",
+            exc,
+        )
         return WindowInfo(app_name="Unknown", window_title="Unknown")
     except Exception:
+        logger.exception("Active window info unexpected error")
         return WindowInfo(app_name="Unknown", window_title="Unknown")
