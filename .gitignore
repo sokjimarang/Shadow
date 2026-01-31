@@ -45,3 +45,7 @@ recordings/
 .serena
 .ralph
 /outputs/mock_e2e_spec.json
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
