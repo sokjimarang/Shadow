@@ -70,6 +70,30 @@ class SpecBuilder:
         self._source_sessions.append(session_id)
         return self
 
+    def build_from_pipeline(
+        self,
+        patterns: list[DetectedPattern],
+        responses: list[tuple[Question, Response]],
+        session_id: str | None = None,
+    ) -> Spec:
+        """파이프라인 결과로 명세서 생성
+
+        Args:
+            patterns: 감지된 패턴 목록
+            responses: (질문, 응답) 튜플 목록
+            session_id: 세션 ID (선택)
+
+        Returns:
+            생성된 명세서
+        """
+        for pattern in patterns:
+            self.add_pattern(pattern)
+        for question, response in responses:
+            self.add_response(question, response)
+        if session_id:
+            self.add_session(session_id)
+        return self.build()
+
     def build(self) -> Spec:
         """명세서 빌드
 
