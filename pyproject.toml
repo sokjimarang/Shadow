@@ -1,0 +1,34 @@
+[project]
+name = "shadow"
+version = "0.1.0"
+description = "화면 녹화 + 입력 이벤트 수집 → Vision AI 분석 → 반복 패턴 감지"
+requires-python = ">=3.13"
+dependencies = [
+    # 기존
+    "fastapi>=0.128.0",
+    "uvicorn>=0.40.0",
+
+    # 설정
+    "pydantic-settings>=2.0.0",
+
+    # 화면 캡처 + 입력 이벤트
+    "mss>=9.0.0",
+    "pynput>=1.7.0",
+    "pillow>=10.0.0",
+
+    # Vision AI - Gemini
+    "google-genai>=1.0.0",
+
+    # Vision AI - Claude
+    "anthropic>=0.40.0",
+
+    # 패턴 분석
+    "numpy>=2.0.0",
+    "python-levenshtein>=0.26.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
