@@ -42,12 +42,41 @@ shadow/
 
 Database 관련 참조가 필요할 때는 [shadow-web 레포지토리](https://github.com/sokjimarang/shadow-web)의 스키마 migration 파일을 참조합니다.
 
+### 문서 폴더 구조
+
+```
+docs/
+├── direction/     # 기획 메인 파일 (PRD, Service Plan 등)
+├── plan/          # Claude plan mode로 생성된 계획안
+└── report/        # 구현 상태, 문제 상황 등 리포트
+```
+
+> **규칙**: 새 문서 생성 시 위 분류에 맞는 폴더에 저장할 것
+
+<!-- DOCS_LIST_START -->
+### 문서 목록
+
+#### direction (기획)
+- `docs/direction/agent_specification_shcema.md`
+- `docs/direction/api_specifcation.md`
+- `docs/direction/data_schema.md`
+- `docs/direction/main_service-plan-v1.2.md`
+- `docs/direction/prd.md`
+
+#### plan (계획안)
+- `docs/plan/plan-nemotron-vl.md`
+
+#### report (리포트)
+- `docs/report/implementation_status.md`
+- `docs/report/p0_gap_report.md`
+<!-- DOCS_LIST_END -->
+
 ### 기능 구현 시 참조 문서
 
 기능 구현 시 다음 문서를 참조하여 스펙이 맞는지 확인하고 구현합니다:
 
-- **PRD 문서**: `docs/prd.md` - 제품 요구사항 및 기능 정의
-- **Service Plan 문서**: `docs/service-plan-v1.2.md` - 서비스 아키텍처 및 구현 계획
+- **PRD 문서**: `docs/direction/prd.md` - 제품 요구사항 및 기능 정의
+- **Service Plan 문서**: `docs/direction/main_service-plan-v1.2.md` - 서비스 아키텍처 및 구현 계획
 
 ### 문서화 규칙
 
@@ -63,7 +92,7 @@ Database 관련 참조가 필요할 때는 [shadow-web 레포지토리](https://
 - 테스트는 구조화된 형태로 작성
 - 임시 해결책보다 근본 원인 해결 우선
 - 새로운 모듈/클래스 추가 시 CLAUDE.md 업데이트
-- **작업 완료 시 `docs/implementation_status.md` 업데이트 필수** (PRD 기반 구현 현황 추적)
+- **작업 완료 시 `docs/report/implementation_status.md` 업데이트 필수** (PRD 기반 구현 현황 추적)
 
 ## 실행 방법
 
