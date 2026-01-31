@@ -14,7 +14,7 @@
 shadow/
 ├── capture/           # 화면 캡처 및 입력 이벤트
 ├── preprocessing/     # 키프레임 추출
-├── analysis/          # Vision AI 분석 (Claude, Gemini)
+├── analysis/          # Vision AI 분석 (Claude)
 ├── patterns/          # 반복 패턴 감지
 ├── hitl/              # Human-in-the-Loop 질문 생성
 ├── spec/              # 자동화 명세서
@@ -210,15 +210,21 @@ docs/
 - 새로운 모듈/클래스 추가 시 CLAUDE.md 업데이트
 - **작업 완료 시 `docs/report/implementation_status.md` 업데이트 필수** (PRD 기반 구현 현황 추적)
 
+### Git 커밋 규칙
+
+> ⚠️ **중요**: 사용자가 명시적으로 커밋을 요청하기 전까지 절대 자동으로 커밋하지 말 것
+> - 코드 작성, 수정, 삭제 후에도 사용자의 커밋 요청이 있을 때만 커밋 수행
+> - "커밋해줘", "commit 해줘" 등 명확한 요청이 있어야 함
+
 ## 실행 방법
 
 ```bash
 # 데모 실행
 python demo.py --record 5              # Claude로 5초 녹화
-python demo.py --record 5 --backend gemini  # Gemini 사용
 
 # 테스트
-uv run pytest
+uv run pytest                          # 단위 테스트
+uv run pytest -m integration -v -s     # 통합 테스트 (API 호출)
 ```
 
 ## 환경 변수
@@ -226,7 +232,6 @@ uv run pytest
 ```env
 # AI API Keys
 ANTHROPIC_API_KEY=sk-ant-...
-GEMINI_API_KEY=...
 
 # Supabase (shadow-web과 동일한 DB 사용)
 SUPABASE_URL=https://ddntzfdetgcobzohimvm.supabase.co
@@ -249,8 +254,8 @@ SLACK_APP_TOKEN=xapp-...
 - [x] F-01: 화면 캡처 (mss)
 - [x] F-02: 마우스 이벤트 캡처 (pynput)
 - [x] F-03: 활성 윈도우 정보 (PyObjC + AppKit, macOS 전용)
-- [ ] F-04: 행동 라벨링 (VLM)
-- [ ] F-05: 패턴 감지 (LLM)
+- [x] F-04: 행동 라벨링 (VLM)
+- [x] F-05: 패턴 감지 (LLM)
 - [ ] F-06: HITL 질문 생성
 - [ ] F-07: Slack 메시지 송신
 - [ ] F-08: Slack 응답 수신

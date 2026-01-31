@@ -2,9 +2,8 @@
 """Shadow CLI 데모 스크립트
 
 사용법:
-    python demo.py --record 10                    # 10초 녹화 (Claude 사용)
-    python demo.py --record 10 --backend gemini   # Gemini 사용
-    python demo.py --test                         # API 없이 테스트 (더미 데이터)
+    python demo.py --record 10    # 10초 녹화 (Claude 사용)
+    python demo.py --test         # API 없이 테스트 (더미 데이터)
 """
 
 import argparse
@@ -13,7 +12,7 @@ import sys
 
 from shadow.analysis import AnalyzerBackend, ClaudeAnalyzer, LabeledAction, create_analyzer
 from shadow.capture import InputEventType, Recorder
-from shadow.patterns import DetectedPattern, PatternDetector
+from shadow.patterns import DetectedPattern, create_pattern_analyzer
 from shadow.preprocessing import KeyframeExtractor
 
 
@@ -99,39 +98,39 @@ async def record_and_analyze(duration: float, backend: str) -> None:
 
     except ValueError as e:
         print(f"API 키 오류: {e}")
-        if backend == "claude":
-            print("ANTHROPIC_API_KEY를 .env 파일에 설정하세요.")
-        else:
-            print("GEMINI_API_KEY를 .env 파일에 설정하세요.")
+        print("ANTHROPIC_API_KEY를 .env 파일에 설정하세요.")
         return
     except Exception as e:
         print(f"분석 오류: {e}")
         return
 
-    # 패턴 감지
-    print_header("패턴 감지")
-    detector = PatternDetector()
+    # 패턴 감지 (LLM 기반)
+    print_header("패턴 감지 (LLM)")
+    try:
+        pattern_analyzer = create_pattern_analyzer("claude")
+        patterns = await pattern_analyzer.detect_patterns(actions)
 
-    # 단순 반복 패턴
-    simple_patterns = detector.detect_simple(actions)
-    if simple_patterns:
-        print("\n[연속 반복 패턴]")
-        print_patterns(simple_patterns)
-
-    # 시퀀스 패턴
-    sequence_patterns = detector.detect(actions)
-    if sequence_patterns:
-        print("\n[시퀀스 패턴]")
-        print_patterns(sequence_patterns)
-
-    if not simple_patterns and not sequence_patterns:
-        print("반복 패턴이 감지되지 않았습니다.")
-        print("같은 동작을 3회 이상 반복해보세요.")
+        if patterns:
+            print_patterns(patterns)
+            # 불확실성 출력
+            for pattern in patterns:
+                if pattern.uncertainties:
+                    print(f"\n  불확실 지점 ({len(pattern.uncertainties)}개):")
+                    for u in pattern.uncertainties:
+                        type_str = u.type.value if hasattr(u.type, "value") else u.type
+                        print(f"    - [{type_str}] {u.hypothesis or u.description}")
+        else:
+            print("반복 패턴이 감지되지 않았습니다.")
+            print("같은 동작을 3회 이상 반복해보세요.")
+    except Exception as e:
+        print(f"패턴 감지 오류: {e}")
 
 
 def test_without_api() -> None:
-    """API 없이 패턴 감지 테스트 (더미 데이터)"""
-    print_header("패턴 감지 테스트 (더미 데이터)")
+    """API 없이 패턴 감지 테스트 (Mock 사용)"""
+    from shadow.pipeline.mocks import MockPatternAnalyzer
+
+    print_header("패턴 감지 테스트 (Mock)")
 
     # 테스트용 더미 액션 (PRD: 3회 반복 필요)
     actions = [
@@ -153,13 +152,20 @@ def test_without_api() -> None:
     for i, action in enumerate(actions, 1):
         print(f"  {i}. {action}")
 
-    detector = PatternDetector()  # 기본값: min_occurrences=3
-
-    # 시퀀스 패턴 감지
-    patterns = detector.detect(actions)
+    # Mock 패턴 분석기로 패턴 감지
+    analyzer = MockPatternAnalyzer()
+    patterns = asyncio.run(analyzer.detect_patterns(actions))
 
     print_header("감지된 패턴")
     print_patterns(patterns)
+
+    # 불확실성 출력
+    for pattern in patterns:
+        if pattern.uncertainties:
+            print(f"\n  불확실 지점 ({len(pattern.uncertainties)}개):")
+            for u in pattern.uncertainties:
+                type_str = u.type.value if hasattr(u.type, "value") else u.type
+                print(f"    - [{type_str}] {u.hypothesis or u.description}")
 
 
 def main() -> None:
@@ -175,7 +181,7 @@ def main() -> None:
     parser.add_argument(
         "--backend",
         type=str,
-        choices=["claude", "gemini"],
+        choices=["claude"],
         default="claude",
         help="사용할 Vision AI 백엔드 (기본: claude)",
     )
