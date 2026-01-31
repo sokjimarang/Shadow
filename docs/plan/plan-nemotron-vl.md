@@ -54,7 +54,6 @@ nemotron_max_image_size: int = 1024
 ```python
 class AnalyzerBackend(Enum):
     CLAUDE = "claude"
-    GEMINI = "gemini"
     NEMOTRON = "nemotron"  # 추가
     QWEN_LOCAL = "qwen_local"
 ```

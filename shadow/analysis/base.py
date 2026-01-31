@@ -1,7 +1,7 @@
 """Vision Analyzer 추상 베이스 클래스
 
 LLM 모델을 쉽게 교체할 수 있도록 인터페이스를 정의합니다.
-- Claude, Gemini, Qwen(로컬) 등 다양한 백엔드 지원
+- Claude, Qwen(로컬) 등 다양한 백엔드 지원
 """
 
 import io
@@ -18,7 +18,6 @@ class AnalyzerBackend(Enum):
     """지원하는 분석기 백엔드"""
 
     CLAUDE = "claude"
-    GEMINI = "gemini"
     QWEN_LOCAL = "qwen_local"  # Ollama 등 로컬 실행
 
 
