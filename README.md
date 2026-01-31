@@ -40,9 +40,47 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 # Gemini API (선택)
 GEMINI_API_KEY=...
+
+# Supabase (shadow-web과 동일한 DB)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-supabase-anon-key
+
+# Slack Bot (shadow-web 연동)
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_SIGNING_SECRET=...
+SLACK_APP_TOKEN=xapp-...
 ```
 
 ## 사용법
+
+### REST API 서버
+
+```bash
+# FastAPI 서버 시작
+uv run uvicorn main:app --reload
+
+# 서버 주소: http://127.0.0.1:8000
+# API 문서: http://127.0.0.1:8000/docs
+```
+
+#### API 엔드포인트
+
+**Agent ↔ Server API** (`/api/v1/`)
+- `POST /api/v1/observations` - 관찰 데이터 전송
+- `GET /api/v1/status` - 시스템 상태 조회
+- `POST /api/v1/control` - 제어 명령 (start/stop/pause/resume)
+
+**HITL API** (`/api/hitl/`)
+- `POST /api/hitl/response` - HITL 응답 수신 (shadow-web 연동)
+- `GET /api/hitl/questions` - 대기 중인 질문 목록
+
+**Spec API** (`/api/specs/`)
+- `GET /api/specs` - 명세서 목록
+- `GET /api/specs/{spec_id}` - 명세서 상세
+- `POST /api/specs` - 명세서 생성
+- `PUT /api/specs/{spec_id}` - 명세서 업데이트
+
+자세한 API 테스트는 `test_main.http` 파일 참조
 
 ### CLI 데모
 
@@ -103,8 +141,21 @@ shadow/
 │   └── models.py      # HITLQuestion, HITLAnswer, InterpretedAnswer
 ├── spec/              # 자동화 명세서
 │   └── models.py      # AgentSpec, SpecHistory
+├── api/               # REST API
+│   ├── routers/       # API 라우터
+│   │   ├── agent.py   # Agent ↔ Server API
+│   │   ├── hitl.py    # HITL API
+│   │   └── specs.py   # Spec API
+│   ├── repositories/  # 데이터 접근 레이어
+│   │   ├── sessions.py
+│   │   ├── observations.py
+│   │   ├── hitl.py
+│   │   └── specs.py
+│   ├── models.py      # API 요청/응답 모델
+│   └── errors.py      # 에러 코드 및 핸들러
 ├── core/              # 시스템 레이어
-│   └── models.py      # Session, User, Config
+│   ├── models.py      # Session, User, Config
+│   └── database.py    # Supabase 연결
 └── config.py          # 설정 관리
 ```
 
@@ -148,6 +199,7 @@ shadow/
 
 - Python 3.13+
 - FastAPI (REST API)
+- Supabase (PostgreSQL database)
 - mss (화면 캡처)
 - pynput (입력 이벤트)
 - Anthropic SDK (Claude API)
@@ -155,6 +207,15 @@ shadow/
 - Pillow (이미지 처리)
 - NumPy (패턴 분석)
 - python-Levenshtein (문자열 유사도)
+
+## 시스템 아키텍처
+
+Shadow는 2개의 서비스로 구성됩니다:
+
+- **shadow-py** (Python): 화면 캡처, VLM 분석, 패턴 감지, API 서버
+- **shadow-web** (TypeScript): Slack 이벤트 수신, HITL 응답 저장
+
+두 서비스는 동일한 Supabase DB를 공유하며, HTTP API로 통신합니다.
 
 ## 라이선스
 
