@@ -1,11 +1,192 @@
-# Test your FastAPI endpoints
+# Shadow API 테스트
+# FastAPI 서버 실행: uv run uvicorn main:app --reload
 
-GET http://127.0.0.1:8000/
+### 1. 기본 서버 상태 확인
+GET http://127.0.0.1:8000/status
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/hello/User
+### 2. Agent API - 시스템 상태 조회
+GET http://127.0.0.1:8000/api/v1/status
+Accept: application/json
+
+###
+
+### 3. Agent API - 세션 시작 (start)
+POST http://127.0.0.1:8000/api/v1/control
+Content-Type: application/json
+
+{
+  "command": "start"
+}
+
+###
+
+### 4. Agent API - 관찰 데이터 전송
+POST http://127.0.0.1:8000/api/v1/observations
+Content-Type: application/json
+
+{
+  "session_id": "{{session_id}}",
+  "observations": [
+    {
+      "id": "obs_001",
+      "timestamp": "2025-01-31T10:00:00Z",
+      "before_screenshot": "base64_encoded_image_data_here",
+      "after_screenshot": "base64_encoded_image_data_here",
+      "event": {
+        "type": "mouse_click",
+        "position": {"x": 100, "y": 200},
+        "button": "left"
+      },
+      "active_window": {
+        "title": "Inbox - Gmail",
+        "app_name": "Google Chrome",
+        "app_bundle_id": "com.google.Chrome"
+      }
+    }
+  ]
+}
+
+###
+
+### 5. Agent API - 세션 중지 (stop)
+POST http://127.0.0.1:8000/api/v1/control
+Content-Type: application/json
+
+{
+  "command": "stop",
+  "session_id": "{{session_id}}"
+}
+
+###
+
+### 6. HITL API - 대기 중인 질문 조회
+GET http://127.0.0.1:8000/api/hitl/questions?limit=10
+Accept: application/json
+
+###
+
+### 7. HITL API - 응답 전송
+POST http://127.0.0.1:8000/api/hitl/response
+Content-Type: application/json
+
+{
+  "question_id": "{{question_id}}",
+  "user_id": "U1234567890",
+  "response_type": "button",
+  "selected_option_id": "option_001",
+  "freetext": null,
+  "timestamp": "2025-01-31T10:05:00Z"
+}
+
+###
+
+### 8. Spec API - 명세서 목록 조회
+GET http://127.0.0.1:8000/api/specs
+Accept: application/json
+
+###
+
+### 9. Spec API - 명세서 생성
+POST http://127.0.0.1:8000/api/specs
+Content-Type: application/json
+
+{
+  "pattern_id": "pattern_001",
+  "content": {
+    "name": "이메일 → 스프레드시트 복사",
+    "description": "Gmail에서 특정 이메일을 찾아 스프레드시트에 복사",
+    "steps": [
+      {
+        "order": 1,
+        "action": "navigate",
+        "target": "gmail_inbox"
+      },
+      {
+        "order": 2,
+        "action": "search",
+        "target": "search_bar",
+        "value": "주문번호"
+      }
+    ]
+  }
+}
+
+###
+
+### 10. Spec API - 명세서 상세 조회
+GET http://127.0.0.1:8000/api/specs/{{spec_id}}
+Accept: application/json
+
+###
+
+### 11. Spec API - 명세서 업데이트
+PUT http://127.0.0.1:8000/api/specs/{{spec_id}}
+Content-Type: application/json
+
+{
+  "content": {
+    "name": "이메일 → 스프레드시트 복사 (수정됨)",
+    "description": "Gmail에서 특정 이메일을 찾아 스프레드시트에 복사하는 자동화",
+    "steps": [
+      {
+        "order": 1,
+        "action": "navigate",
+        "target": "gmail_inbox"
+      }
+    ]
+  },
+  "change_summary": "설명 추가 및 steps 간소화"
+}
+
+###
+
+### === 기존 엔드포인트 (호환성 유지) ===
+
+### 12. 녹화 시작
+POST http://127.0.0.1:8000/recording/start
+Content-Type: application/json
+
+{
+  "duration": 10.0,
+  "monitor": 1,
+  "fps": 10
+}
+
+###
+
+### 13. 녹화 상태 조회
+GET http://127.0.0.1:8000/recording/status
+Accept: application/json
+
+###
+
+### 14. 녹화 중지
+POST http://127.0.0.1:8000/recording/stop
+Accept: application/json
+
+###
+
+### 15. 분석 시작
+POST http://127.0.0.1:8000/analyze
+Content-Type: application/json
+
+{
+  "backend": "claude"
+}
+
+###
+
+### 16. 라벨 조회
+GET http://127.0.0.1:8000/labels
+Accept: application/json
+
+###
+
+### 17. 패턴 조회
+GET http://127.0.0.1:8000/patterns
 Accept: application/json
 
 ###
