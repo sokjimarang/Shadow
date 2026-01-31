@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     gemini_media_resolution: str = "medium"  # low/medium/high
 
     # Claude 분석 설정
-    claude_model: str = "claude-opus-4-5-20250929"  # Claude Opus 4.5
+    claude_model: str = "claude-opus-4-5-20251101"  # Claude Opus 4.5
     claude_max_image_size: int = 1024  # 이미지 최대 크기 (토큰 절약)
     claude_use_cache: bool = True  # 프롬프트 캐싱 사용
 
