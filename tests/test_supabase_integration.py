@@ -198,8 +198,11 @@ class TestSessionRepository:
         """존재하지 않는 세션 조회 시 에러"""
         repo = SessionRepository(db_client)
 
+        # UUID 형식의 존재하지 않는 세션 ID 사용
+        nonexistent_id = str(uuid.uuid4())
+
         with pytest.raises(ShadowAPIError) as exc_info:
-            repo.get_session("nonexistent_session_id")
+            repo.get_session(nonexistent_id)
 
         assert exc_info.value.error_code == ErrorCode.E201
 
@@ -377,6 +380,74 @@ class TestSpecRepository:
 
         print(f"\n✓ 명세서 목록 조회 성공: {len(specs)}개")
 
+    def test_get_nonexistent_spec(self, db_client):
+        """존재하지 않는 명세서 조회 시 에러 발생 테스트"""
+        repo = SpecRepository(db_client)
+
+        nonexistent_id = str(uuid.uuid4())
+
+        with pytest.raises(ShadowAPIError) as exc_info:
+            repo.get_spec(nonexistent_id)
+
+        assert exc_info.value.error_code == ErrorCode.E202
+
+        print(f"\n✓ 존재하지 않는 명세서 조회 에러 확인: {exc_info.value.error_code}")
+
+    def test_update_nonexistent_spec(self, db_client):
+        """존재하지 않는 명세서 업데이트 시 에러 발생 테스트"""
+        repo = SpecRepository(db_client)
+
+        nonexistent_id = str(uuid.uuid4())
+
+        with pytest.raises(ShadowAPIError) as exc_info:
+            repo.update_spec(spec_id=nonexistent_id, content={"test": "data"})
+
+        assert exc_info.value.error_code == ErrorCode.E202
+
+        print(f"\n✓ 존재하지 않는 명세서 업데이트 에러 확인: {exc_info.value.error_code}")
+
+    def test_update_spec_creates_history(self, db_client, cleanup_specs):
+        """명세서 업데이트 시 spec_history에 기록되는지 테스트"""
+        repo = SpecRepository(db_client)
+
+        # 명세서 생성
+        spec_id = str(uuid.uuid4())
+        pattern_id = f"pattern_{uuid.uuid4().hex[:8]}"
+        repo.create_spec(
+            spec_id=spec_id,
+            pattern_id=pattern_id,
+            version="0.1.0",
+            content={"old": "content"},
+        )
+
+        cleanup_specs(spec_id)
+
+        # 명세서 업데이트 (change_summary 포함)
+        repo.update_spec(
+            spec_id=spec_id,
+            content={"new": "content"},
+            version="0.2.0",
+            change_summary="버전 업그레이드",
+        )
+
+        # spec_history에 기록되었는지 확인
+        history_response = (
+            db_client.table("spec_history")
+            .select("*")
+            .eq("spec_id", spec_id)
+            .execute()
+        )
+
+        assert len(history_response.data) >= 1
+        history = history_response.data[0]
+        assert history["change_type"] == "update"
+        assert history["change_summary"] == "버전 업그레이드"
+
+        # 정리
+        db_client.table("spec_history").delete().eq("spec_id", spec_id).execute()
+
+        print(f"\n✓ 명세서 업데이트 시 히스토리 기록 확인")
+
 
 # ====== HITL Repository 테스트 ======
 
@@ -480,6 +551,92 @@ class TestHITLRepository:
         assert question["status"] == "answered"
 
         print(f"\n✓ HITL 응답 생성 성공: {answer_id}")
+
+    def test_get_nonexistent_question(self, db_client):
+        """존재하지 않는 질문 조회 시 에러 발생 테스트"""
+        repo = HITLRepository(db_client)
+
+        nonexistent_id = str(uuid.uuid4())
+
+        with pytest.raises(ShadowAPIError) as exc_info:
+            repo.get_question(nonexistent_id)
+
+        assert exc_info.value.error_code == ErrorCode.E203
+
+        print(f"\n✓ 존재하지 않는 질문 조회 에러 확인: {exc_info.value.error_code}")
+
+    def test_create_answer_with_nonexistent_question(self, db_client):
+        """존재하지 않는 질문에 응답 생성 시 에러 발생 테스트 (FK 제약)"""
+        repo = HITLRepository(db_client)
+
+        nonexistent_question_id = str(uuid.uuid4())
+        answer_id = str(uuid.uuid4())
+
+        with pytest.raises(ShadowAPIError) as exc_info:
+            repo.create_answer(
+                answer_id=answer_id,
+                question_id=nonexistent_question_id,
+                user_id="test_user",
+                response_type="button",
+                selected_option_id="opt1",
+                freetext=None,
+            )
+
+        # FK 제약 위반으로 에러 발생해야 함
+        assert exc_info.value.error_code == ErrorCode.E001
+
+        print(f"\n✓ FK 제약 위반 에러 확인: {exc_info.value.error_code}")
+
+    def test_create_question_with_invalid_type(self, db_client):
+        """잘못된 타입으로 질문 생성 시 에러 발생 테스트 (CHECK 제약)"""
+        repo = HITLRepository(db_client)
+
+        question_id = str(uuid.uuid4())
+        pattern_id = f"pattern_{uuid.uuid4().hex[:8]}"
+
+        with pytest.raises(ShadowAPIError) as exc_info:
+            repo.create_question(
+                question_id=question_id,
+                pattern_id=pattern_id,
+                question_type="invalid_type",  # 유효하지 않은 타입
+                question_text="테스트 질문",
+                options=[],
+            )
+
+        # CHECK 제약 위반으로 에러 발생해야 함
+        assert exc_info.value.error_code == ErrorCode.E001
+
+        print(f"\n✓ CHECK 제약 위반 에러 확인: {exc_info.value.error_code}")
+
+    def test_update_question_status(self, db_client, cleanup_questions):
+        """질문 상태 업데이트 테스트"""
+        repo = HITLRepository(db_client)
+
+        # 질문 생성
+        question_id = str(uuid.uuid4())
+        pattern_id = f"pattern_{uuid.uuid4().hex[:8]}"
+
+        repo.create_question(
+            question_id=question_id,
+            pattern_id=pattern_id,
+            question_type="hypothesis",
+            question_text="테스트 질문",
+            options=[],
+        )
+
+        cleanup_questions(question_id)
+
+        # 상태 업데이트: pending → sent
+        updated = repo.update_question_status(
+            question_id=question_id,
+            status="sent",
+            slack_message_ts="1234567890.123456",
+        )
+
+        assert updated["status"] == "sent"
+        assert updated["slack_message_ts"] == "1234567890.123456"
+
+        print(f"\n✓ 질문 상태 업데이트 성공: pending → sent")
 
 
 # ====== 통합 워크플로우 테스트 ======
