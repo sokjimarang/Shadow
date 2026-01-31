@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from shadow.capture.models import Frame
+from shadow.capture.window import get_current_process_info
 from shadow.config import settings
 
 
@@ -44,6 +45,22 @@ class ScreenCapture:
         """
         if self._sct is None:
             raise RuntimeError("캡처 세션이 시작되지 않음. session() 컨텍스트 내에서 사용하세요.")
+
+        if self._monitor >= len(self._sct.monitors):
+            info = get_current_process_info()
+            logger = __import__("logging").getLogger(__name__)
+            logger.warning(
+                "Screen Recording 권한 필요. 현재 실행 앱=%s bundle_id=%s pid=%s exe=%s",
+                info.get("app_name"),
+                info.get("bundle_id"),
+                info.get("pid"),
+                info.get("executable"),
+            )
+            raise RuntimeError(
+                f"모니터 인덱스 범위 오류: monitor={self._monitor}, "
+                f"available={len(self._sct.monitors)}. "
+                "Screen Recording 권한을 확인하세요."
+            )
 
         monitor = self._sct.monitors[self._monitor]
         screenshot = self._sct.grab(monitor)

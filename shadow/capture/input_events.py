@@ -9,7 +9,12 @@ from queue import Empty, Queue
 from pynput import keyboard, mouse
 
 from shadow.capture.models import InputEvent, InputEventType
-from shadow.capture.window import WindowInfoCollector, get_active_window, get_window_at_point
+from shadow.capture.window import (
+    WindowInfoCollector,
+    get_active_window,
+    get_current_process_info,
+    get_window_at_point,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +130,11 @@ class InputEventCollector:
     def _on_key_press(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
         """키 누름 이벤트 핸들러"""
         # F-03: 활성 윈도우 정보 수집
-        window_info = self._get_active_window_info()
+        # 키보드 이벤트는 마우스 커서 위치 기반으로 윈도우 감지
+        # (frontmostApplication()이 터미널을 반환하는 문제 회피)
+        mouse_controller = mouse.Controller()
+        cursor_pos = mouse_controller.position
+        window_info = self._get_window_info_for_point(cursor_pos[0], cursor_pos[1])
 
         key_str = self._key_to_string(key)
         event = InputEvent(
@@ -141,7 +150,10 @@ class InputEventCollector:
     def _on_key_release(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
         """키 릴리즈 이벤트 핸들러"""
         # F-03: 활성 윈도우 정보 수집
-        window_info = self._get_active_window_info()
+        # 키보드 이벤트는 마우스 커서 위치 기반으로 윈도우 감지
+        mouse_controller = mouse.Controller()
+        cursor_pos = mouse_controller.position
+        window_info = self._get_window_info_for_point(cursor_pos[0], cursor_pos[1])
 
         key_str = self._key_to_string(key)
         event = InputEvent(
