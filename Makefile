@@ -40,9 +40,13 @@ db-diff:
 
 # 새로운 마이그레이션 파일 생성
 db-migration-new:
-	@read -p "Enter migration name: " name; \
-	echo "Creating new migration: $$name"; \
-	supabase migration new $$name
+	@if [ -z "$(NAME)" ]; then \
+		read -p "Enter migration name: " name; \
+		supabase migration new $$name; \
+	else \
+		echo "Creating migration: $(NAME)"; \
+		supabase migration new $(NAME); \
+	fi
 
 # 마이그레이션 목록 확인
 db-migration-list:
