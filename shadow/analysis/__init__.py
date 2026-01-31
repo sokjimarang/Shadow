@@ -6,9 +6,15 @@
 - Qwen (로컬) - 추후 지원 예정
 """
 
-from shadow.analysis.base import ActionLabel, AnalyzerBackend, BaseVisionAnalyzer
+from shadow.analysis.base import AnalyzerBackend, BaseVisionAnalyzer
 from shadow.analysis.claude import ClaudeAnalyzer
 from shadow.analysis.gemini import GeminiAnalyzer
+from shadow.analysis.models import (
+    ActionType,
+    LabeledAction,
+    SessionSequence,
+    SessionStatus,
+)
 
 
 def create_analyzer(
@@ -43,9 +49,15 @@ def create_analyzer(
 
 
 __all__ = [
-    "ActionLabel",
+    # Pydantic 모델
+    "LabeledAction",
+    "ActionType",
+    "SessionSequence",
+    "SessionStatus",
+    # 분석기 베이스
     "AnalyzerBackend",
     "BaseVisionAnalyzer",
+    # 분석기 구현체
     "ClaudeAnalyzer",
     "GeminiAnalyzer",
     "create_analyzer",

@@ -26,8 +26,9 @@ dependencies = [
     "numpy>=2.0.0",
     "python-levenshtein>=0.26.0",
 
-    # 활성 윈도우 정보 (macOS)
-    "pyobjc-framework-Cocoa>=10.3.1",
+    # 활성 윈도우 정보 (macOS 전용)
+    "pyobjc-framework-Cocoa>=10.3.1; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=10.3.1; sys_platform == 'darwin'",
 
     # Database
     "supabase>=2.0.0",

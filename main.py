@@ -12,16 +12,15 @@
 import asyncio
 import threading
 from contextlib import asynccontextmanager
-from dataclasses import asdict
 from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from shadow.analysis.base import ActionLabel
+from shadow.analysis.models import LabeledAction
 from shadow.analysis.claude import ClaudeAnalyzer
 from shadow.analysis.gemini import GeminiAnalyzer
-from shadow.capture.recorder import Recorder
+from shadow.capture.recorder import Recorder, RecordingSession
 from shadow.config import settings
 from shadow.patterns.detector import PatternDetector
 from shadow.preprocessing.keyframe import KeyframeExtractor
@@ -37,7 +36,7 @@ class AppState:
         self.recorder: Recorder | None = None
         self.session: RecordingSession | None = None
         self.recording_thread: threading.Thread | None = None
-        self.labels: list[ActionLabel] = []
+        self.labels: list[LabeledAction] = []
         self.patterns: list[dict[str, Any]] = []
         self.is_analyzing: bool = False
 
@@ -196,7 +195,7 @@ async def analyze_session(request: AnalyzeRequest, background_tasks: BackgroundT
         try:
             # 키프레임 추출
             extractor = KeyframeExtractor()
-            keyframes = extractor.extract(state.session.frames, state.session.events)
+            keyframes = extractor.extract(state.session)
 
             if not keyframes:
                 return
@@ -210,8 +209,8 @@ async def analyze_session(request: AnalyzeRequest, background_tasks: BackgroundT
                 patterns = detector.detect(state.labels)
                 state.patterns = [
                     {
-                        "actions": [asdict(a) for a in p.actions],
-                        "occurrences": p.occurrences,
+                        "actions": [a.model_dump() for a in p.actions],
+                        "occurrences": p.occurrence_indices,
                         "count": p.count,
                     }
                     for p in patterns
@@ -235,7 +234,7 @@ async def get_labels():
     """분석된 액션 라벨 조회"""
     return {
         "count": len(state.labels),
-        "labels": [asdict(label) for label in state.labels],
+        "labels": [label.model_dump() for label in state.labels],
     }
 
 

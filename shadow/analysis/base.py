@@ -6,12 +6,12 @@ LLM 모델을 쉽게 교체할 수 있도록 인터페이스를 정의합니다.
 
 import io
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from enum import Enum
 
 from PIL import Image
 
-from shadow.capture.models import Keyframe
+from shadow.analysis.models import LabeledAction
+from shadow.capture.models import Frame, KeyframePair
 
 
 class AnalyzerBackend(Enum):
@@ -22,52 +22,33 @@ class AnalyzerBackend(Enum):
     QWEN_LOCAL = "qwen_local"  # Ollama 등 로컬 실행
 
 
-@dataclass
-class ActionLabel:
-    """분석된 동작 라벨"""
-
-    action: str  # 동작 타입 (click, scroll, type 등)
-    target: str  # 대상 UI 요소
-    context: str  # 앱/화면 컨텍스트
-    description: str  # 동작 설명
-
-    def __str__(self) -> str:
-        return f"{self.action}: {self.target} ({self.context})"
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ActionLabel):
-            return False
-        # 동작과 대상이 같으면 동일한 액션으로 취급
-        return self.action == other.action and self.target == other.target
-
-    def __hash__(self) -> int:
-        return hash((self.action, self.target))
-
-
 class BaseVisionAnalyzer(ABC):
     """Vision 분석기 추상 베이스 클래스
 
     모든 Vision LLM 백엔드는 이 클래스를 상속받아 구현합니다.
+    Before/After 키프레임 쌍 분석이 기본 인터페이스입니다.
     """
 
     @abstractmethod
-    async def analyze_keyframe(self, keyframe: Keyframe) -> ActionLabel:
-        """단일 키프레임 분석
+    async def analyze_keyframe_pair(self, pair: KeyframePair) -> LabeledAction:
+        """Before/After 키프레임 쌍 분석
+
+        클릭 전후 화면을 비교하여 상태 변화를 분석합니다.
 
         Args:
-            keyframe: 분석할 키프레임
+            pair: 분석할 키프레임 쌍
 
         Returns:
-            분석된 동작 라벨
+            상태 변화가 포함된 동작 라벨
         """
         pass
 
     @abstractmethod
-    async def analyze_batch(self, keyframes: list[Keyframe]) -> list[ActionLabel]:
-        """여러 키프레임 배치 분석
+    async def analyze_batch(self, pairs: list[KeyframePair]) -> list[LabeledAction]:
+        """여러 키프레임 쌍 배치 분석
 
         Args:
-            keyframes: 분석할 키프레임 목록
+            pairs: 분석할 키프레임 쌍 목록
 
         Returns:
             분석된 동작 라벨 목록
@@ -86,41 +67,41 @@ class BaseVisionAnalyzer(ABC):
         """사용 중인 모델 이름"""
         pass
 
-    def _prepare_image(
+    def _prepare_frame_image(
         self,
-        keyframe: Keyframe,
+        frame: Frame,
         max_size: int = 1024,
-        mark_click: bool = True,
+        click_pos: tuple[int, int] | None = None,
     ) -> tuple[bytes, str]:
-        """키프레임 이미지를 API용으로 준비
+        """프레임 이미지를 API용으로 준비
 
         Args:
-            keyframe: 분석할 키프레임
+            frame: 분석할 프레임
             max_size: 이미지 최대 크기 (토큰 절약)
-            mark_click: 클릭 위치에 마커 표시 여부
+            click_pos: 클릭 위치 (x, y) - 표시할 경우
 
         Returns:
             (이미지 bytes, mime_type) 튜플
         """
-        img = Image.fromarray(keyframe.frame.image)
+        img = Image.fromarray(frame.image)
+        original_size = img.size
 
         # 이미지 리사이즈 (토큰 절약)
         if max(img.size) > max_size:
             img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
 
         # 클릭 위치 표시
-        if mark_click and keyframe.trigger_event.x is not None:
+        if click_pos is not None:
             from PIL import ImageDraw
 
             draw = ImageDraw.Draw(img)
             # 리사이즈 비율 계산
-            scale_x = img.width / keyframe.frame.width
-            scale_y = img.height / keyframe.frame.height
-            x = int(keyframe.trigger_event.x * scale_x)
-            y = int(keyframe.trigger_event.y * scale_y)
+            scale_x = img.width / original_size[0]
+            scale_y = img.height / original_size[1]
+            x = int(click_pos[0] * scale_x)
+            y = int(click_pos[1] * scale_y)
 
             radius = 8
-            # 빨간 원 + 흰색 테두리
             draw.ellipse(
                 [x - radius - 2, y - radius - 2, x + radius + 2, y + radius + 2],
                 outline="white",
@@ -149,3 +130,10 @@ class BaseVisionAnalyzer(ABC):
             추정 토큰 수
         """
         return (width * height) // 750
+
+
+__all__ = [
+    "LabeledAction",
+    "AnalyzerBackend",
+    "BaseVisionAnalyzer",
+]

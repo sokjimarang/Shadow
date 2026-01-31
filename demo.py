@@ -11,9 +11,9 @@ import argparse
 import asyncio
 import sys
 
-from shadow.analysis import ActionLabel, AnalyzerBackend, ClaudeAnalyzer, create_analyzer
+from shadow.analysis import AnalyzerBackend, ClaudeAnalyzer, LabeledAction, create_analyzer
 from shadow.capture import InputEventType, Recorder
-from shadow.patterns import Pattern, PatternDetector
+from shadow.patterns import DetectedPattern, PatternDetector
 from shadow.preprocessing import KeyframeExtractor
 
 
@@ -24,7 +24,7 @@ def print_header(text: str) -> None:
     print("=" * 50)
 
 
-def print_patterns(patterns: list[Pattern]) -> None:
+def print_patterns(patterns: list[DetectedPattern]) -> None:
     """감지된 패턴 출력"""
     if not patterns:
         print("감지된 패턴 없음")
@@ -126,31 +126,34 @@ async def record_and_analyze(duration: float, backend: str) -> None:
 
     if not simple_patterns and not sequence_patterns:
         print("반복 패턴이 감지되지 않았습니다.")
-        print("같은 동작을 2회 이상 반복해보세요.")
+        print("같은 동작을 3회 이상 반복해보세요.")
 
 
 def test_without_api() -> None:
     """API 없이 패턴 감지 테스트 (더미 데이터)"""
     print_header("패턴 감지 테스트 (더미 데이터)")
 
-    # 테스트용 더미 액션
+    # 테스트용 더미 액션 (PRD: 3회 반복 필요)
     actions = [
-        ActionLabel("click", "새로고침 버튼", "Chrome", "페이지 새로고침"),
-        ActionLabel("click", "검색창", "Chrome", "검색창 클릭"),
-        ActionLabel("type", "검색어", "Chrome", "검색어 입력"),
-        ActionLabel("click", "새로고침 버튼", "Chrome", "페이지 새로고침"),
-        ActionLabel("click", "검색창", "Chrome", "검색창 클릭"),
-        ActionLabel("type", "검색어", "Chrome", "검색어 입력"),
-        ActionLabel("click", "새로고침 버튼", "Chrome", "페이지 새로고침"),
-        ActionLabel("click", "검색창", "Chrome", "검색창 클릭"),
-        ActionLabel("type", "검색어", "Chrome", "검색어 입력"),
+        # 1회차
+        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
+        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
+        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
+        # 2회차
+        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
+        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
+        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
+        # 3회차
+        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
+        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
+        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
     ]
 
     print("테스트 액션 시퀀스:")
     for i, action in enumerate(actions, 1):
         print(f"  {i}. {action}")
 
-    detector = PatternDetector()
+    detector = PatternDetector()  # 기본값: min_occurrences=3
 
     # 시퀀스 패턴 감지
     patterns = detector.detect(actions)

@@ -8,7 +8,7 @@ from queue import Empty, Queue
 from pynput import keyboard, mouse
 
 from shadow.capture.models import InputEvent, InputEventType
-from shadow.capture.window import WindowInfoCollector
+from shadow.capture.window import get_active_window
 
 
 class InputEventCollector:
@@ -26,12 +26,6 @@ class InputEventCollector:
         self._running = False
         self._callbacks: list[Callable[[InputEvent], None]] = []
 
-        # 윈도우 정보 수집기 (선택적)
-        try:
-            self._window_collector: WindowInfoCollector | None = WindowInfoCollector()
-        except RuntimeError:
-            self._window_collector = None
-
     def add_callback(self, callback: Callable[[InputEvent], None]) -> None:
         """이벤트 발생 시 호출될 콜백 추가"""
         self._callbacks.append(callback)
@@ -42,13 +36,6 @@ class InputEventCollector:
 
     def _emit_event(self, event: InputEvent) -> None:
         """이벤트 발생 및 콜백 호출"""
-        # 윈도우 정보 추가
-        if self._window_collector:
-            try:
-                event.window_info = self._window_collector.get_active_window()
-            except Exception:
-                pass  # 실패해도 이벤트는 기록
-
         # 버퍼가 가득 차면 오래된 이벤트 제거
         if self._events.full():
             try:
@@ -72,12 +59,17 @@ class InputEventCollector:
         if not pressed:  # 릴리즈는 무시
             return
 
+        # F-03: 활성 윈도우 정보 수집
+        window_info = get_active_window()
+
         event = InputEvent(
             timestamp=time.time(),
             event_type=InputEventType.MOUSE_CLICK,
             x=x,
             y=y,
             button=button.name,
+            app_name=window_info.app_name,
+            window_title=window_info.window_title,
         )
         self._emit_event(event)
 

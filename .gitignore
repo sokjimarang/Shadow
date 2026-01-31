@@ -44,3 +44,4 @@ Thumbs.db
 recordings/
 .serena
 .ralph
+/outputs/mock_e2e_spec.json

@@ -1,23 +1,9 @@
 """반복 패턴 감지 엔진"""
 
-from dataclasses import dataclass
-
-from shadow.analysis.gemini import ActionLabel
+from shadow.analysis.models import LabeledAction
 from shadow.config import settings
+from shadow.patterns.models import DetectedPattern, Uncertainty
 from shadow.patterns.similarity import exact_sequence_match
-
-
-@dataclass
-class Pattern:
-    """감지된 반복 패턴"""
-
-    actions: list[ActionLabel]  # 패턴을 구성하는 액션들
-    occurrences: list[int]  # 패턴이 시작되는 인덱스들
-    count: int  # 반복 횟수
-
-    def __str__(self) -> str:
-        action_str = " → ".join(str(a) for a in self.actions)
-        return f"[{action_str}] x {self.count}회"
 
 
 class PatternDetector:
@@ -26,7 +12,7 @@ class PatternDetector:
     def __init__(
         self,
         min_length: int | None = None,
-        min_occurrences: int = 2,
+        min_occurrences: int = 3,  # PRD: 3회 관찰 필요
         similarity_threshold: float | None = None,
     ):
         """
@@ -41,7 +27,7 @@ class PatternDetector:
             similarity_threshold or settings.pattern_similarity_threshold
         )
 
-    def detect(self, actions: list[ActionLabel]) -> list[Pattern]:
+    def detect(self, actions: list[LabeledAction]) -> list[DetectedPattern]:
         """액션 시퀀스에서 반복 패턴 감지
 
         Args:
@@ -53,7 +39,7 @@ class PatternDetector:
         if len(actions) < self._min_length * self._min_occurrences:
             return []
 
-        patterns = []
+        patterns: list[DetectedPattern] = []
         used_positions: set[int] = set()  # 이미 패턴에 포함된 위치
         n = len(actions)
 
@@ -75,10 +61,9 @@ class PatternDetector:
                     # 이미 포함된 패턴인지 확인
                     if not self._is_subpattern(candidate, patterns):
                         patterns.append(
-                            Pattern(
+                            DetectedPattern(
                                 actions=candidate,
-                                occurrences=occurrences,
-                                count=len(occurrences),
+                                occurrence_indices=occurrences,
                             )
                         )
                         # 사용된 위치 기록
@@ -90,8 +75,8 @@ class PatternDetector:
 
     def _find_occurrences(
         self,
-        actions: list[ActionLabel],
-        pattern: list[ActionLabel],
+        actions: list[LabeledAction],
+        pattern: list[LabeledAction],
         start_from: int,
         used_positions: set[int] | None = None,
     ) -> list[int]:
@@ -119,7 +104,7 @@ class PatternDetector:
         return occurrences
 
     def _is_subpattern(
-        self, candidate: list[ActionLabel], existing_patterns: list[Pattern]
+        self, candidate: list[LabeledAction], existing_patterns: list[DetectedPattern]
     ) -> bool:
         """후보 패턴이 기존 패턴의 부분 패턴인지 확인"""
         for pattern in existing_patterns:
@@ -132,7 +117,7 @@ class PatternDetector:
                         return True
         return False
 
-    def detect_simple(self, actions: list[ActionLabel]) -> list[Pattern]:
+    def detect_simple(self, actions: list[LabeledAction]) -> list[DetectedPattern]:
         """단순 연속 반복 패턴 감지 (같은 액션이 연속으로 반복)
 
         Args:
@@ -144,7 +129,7 @@ class PatternDetector:
         if not actions:
             return []
 
-        patterns = []
+        patterns: list[DetectedPattern] = []
         i = 0
 
         while i < len(actions):
@@ -158,10 +143,9 @@ class PatternDetector:
 
             if count >= self._min_occurrences:
                 patterns.append(
-                    Pattern(
+                    DetectedPattern(
                         actions=[current],
-                        occurrences=list(range(start_idx, start_idx + count)),
-                        count=count,
+                        occurrence_indices=list(range(start_idx, start_idx + count)),
                     )
                 )
 
