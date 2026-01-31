@@ -40,7 +40,11 @@ shadow/
 
 ### Database 스키마 참조
 
-Database 관련 참조가 필요할 때는 [shadow-web 레포지토리](https://github.com/sokjimarang/shadow-web)의 스키마 migration 파일을 참조합니다.
+Database 관련 참조가 필요할 때는 다음 파일을 참조합니다:
+
+- **Migration 파일**: `supabase/migrations/*.sql` - 실제 DB 스키마 정의
+- **Migration 가이드**: `docs/database/migration-guide.md` - 마이그레이션 관리 방법
+- **DB 관리 명령어**: `Makefile` - db-start, db-push 등 명령어 정의
 
 ### 문서 폴더 구조
 
@@ -48,7 +52,8 @@ Database 관련 참조가 필요할 때는 [shadow-web 레포지토리](https://
 docs/
 ├── direction/     # 기획 메인 파일 (PRD, Service Plan 등)
 ├── plan/          # Claude plan mode로 생성된 계획안
-└── report/        # 구현 상태, 문제 상황 등 리포트
+├── report/        # 구현 상태, 문제 상황 등 리포트
+└── database/      # 데이터베이스 관련 문서
 ```
 
 > **규칙**: 새 문서 생성 시 위 분류에 맞는 폴더에 저장할 것
@@ -69,6 +74,9 @@ docs/
 #### report (리포트)
 - `docs/report/implementation_status.md`
 - `docs/report/p0_gap_report.md`
+
+#### database (데이터베이스)
+- `docs/database/migration-guide.md`
 <!-- DOCS_LIST_END -->
 
 ### 기능 구현 시 참조 문서
@@ -108,9 +116,26 @@ uv run pytest
 ## 환경 변수
 
 ```env
+# AI API Keys
 ANTHROPIC_API_KEY=sk-ant-...
 GEMINI_API_KEY=...
+
+# Supabase (shadow-web과 동일한 DB 사용)
+SUPABASE_URL=https://ddntzfdetgcobzohimvm.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
+
+# Slack Bot (shadow-web 연동)
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_SIGNING_SECRET=...
+SLACK_APP_TOKEN=xapp-...
 ```
+
+**DB 관리 명령어** (Makefile 사용):
+- `make db-start` - 로컬 Supabase 시작
+- `make db-migration-new` - 새 마이그레이션 생성
+- `make db-push` - 프로덕션에 배포
+
+자세한 내용: `docs/database/migration-guide.md`
 ## 구현된 기능 (PRD 기준)
 
 - [x] F-01: 화면 캡처 (mss)

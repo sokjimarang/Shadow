@@ -28,10 +28,10 @@ pip install -e .
 
 ## 환경 설정
 
-`.env` 파일을 생성하고 API 키를 설정하세요:
+`.env.local` 파일을 생성하고 API 키를 설정하세요:
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
 ```env
@@ -50,6 +50,44 @@ SLACK_BOT_TOKEN=xoxb-...
 SLACK_SIGNING_SECRET=...
 SLACK_APP_TOKEN=xapp-...
 ```
+
+## 데이터베이스 마이그레이션
+
+Shadow는 Supabase PostgreSQL 데이터베이스를 사용합니다.
+
+### Supabase CLI 설치
+
+```bash
+# Homebrew (macOS)
+brew install supabase/tap/supabase
+
+# NPM
+npm install -g supabase
+
+# 설치 확인
+supabase --version
+```
+
+### DB 관리 명령어 (Makefile)
+
+```bash
+# 로컬 환경 관리
+make db-start          # Docker로 로컬 Supabase 시작
+make db-stop           # 로컬 Supabase 중지
+make db-status         # 연결 상태 및 URL 확인
+
+# 마이그레이션 관리
+make db-migration-new  # 새 마이그레이션 파일 생성
+make db-migration-list # 마이그레이션 목록 확인
+make db-reset          # 로컬 DB 초기화
+
+# 프로덕션 배포
+make db-push           # 프로덕션에 마이그레이션 배포
+make db-pull           # 프로덕션 스키마 가져오기
+make db-diff           # 로컬-프로덕션 차이 확인
+```
+
+자세한 내용은 [`docs/database/migration-guide.md`](docs/database/migration-guide.md)를 참조하세요.
 
 ## 사용법
 
