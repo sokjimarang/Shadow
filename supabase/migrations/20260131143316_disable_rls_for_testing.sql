@@ -54,7 +54,7 @@ BEGIN
     ALTER TABLE agent_specs DISABLE ROW LEVEL SECURITY;
   END IF;
   
-  IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'spec_histories') THEN
-    ALTER TABLE spec_histories DISABLE ROW LEVEL SECURITY;
+  IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'spec_history') THEN
+    ALTER TABLE spec_history DISABLE ROW LEVEL SECURITY;
   END IF;
 END $$;
