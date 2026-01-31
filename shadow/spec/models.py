@@ -1,7 +1,6 @@
 """명세서 데이터 모델
 
 패턴 분석 + HITL 응답을 종합한 자동화 명세서입니다.
-기존 dataclass를 Pydantic으로 대체합니다.
 """
 
 from datetime import datetime
@@ -37,7 +36,7 @@ class ChangeSource(str, Enum):
 
 
 class DecisionRule(BaseModel):
-    """의사결정 규칙 (기존 dataclass 대체)
+    """의사결정 규칙
 
     HITL 질문 응답으로부터 생성된 규칙입니다.
     """
@@ -48,30 +47,9 @@ class DecisionRule(BaseModel):
     confirmed_by: str  # question_id
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
-    def to_dict(self) -> dict[str, Any]:
-        """딕셔너리로 변환 (기존 호환)"""
-        return {
-            "id": self.id,
-            "condition": self.condition,
-            "action": self.action,
-            "confirmed_by": self.confirmed_by,
-            "confidence": self.confidence,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "DecisionRule":
-        """딕셔너리에서 생성 (기존 호환)"""
-        return cls(
-            id=data["id"],
-            condition=data["condition"],
-            action=data["action"],
-            confirmed_by=data["confirmed_by"],
-            confidence=data.get("confidence", 1.0),
-        )
-
 
 class WorkflowStep(BaseModel):
-    """워크플로우 단계 (기존 dataclass 대체)"""
+    """워크플로우 단계"""
 
     order: int  # 실행 순서
     action: str  # 수행할 동작
@@ -80,32 +58,9 @@ class WorkflowStep(BaseModel):
     description: str = ""  # 상세 설명
     optional: bool = False  # 선택적 단계 여부
 
-    def to_dict(self) -> dict[str, Any]:
-        """딕셔너리로 변환 (기존 호환)"""
-        return {
-            "order": self.order,
-            "action": self.action,
-            "target": self.target,
-            "context": self.context,
-            "description": self.description,
-            "optional": self.optional,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WorkflowStep":
-        """딕셔너리에서 생성 (기존 호환)"""
-        return cls(
-            order=data["order"],
-            action=data["action"],
-            target=data["target"],
-            context=data["context"],
-            description=data.get("description", ""),
-            optional=data.get("optional", False),
-        )
-
 
 class SpecMeta(BaseModel):
-    """명세서 메타데이터 (기존 dataclass 대체)"""
+    """명세서 메타데이터"""
 
     name: str
     version: str = "1.0"
@@ -113,19 +68,9 @@ class SpecMeta(BaseModel):
     description: str = ""
     source_sessions: list[str] = Field(default_factory=list)
 
-    def to_dict(self) -> dict[str, Any]:
-        """딕셔너리로 변환 (기존 호환)"""
-        return {
-            "name": self.name,
-            "version": self.version,
-            "created_at": self.created_at.isoformat(),
-            "description": self.description,
-            "source_sessions": self.source_sessions,
-        }
-
 
 class Spec(BaseModel):
-    """자동화 명세서 (기존 dataclass 대체)
+    """자동화 명세서
 
     패턴 분석 + HITL 응답을 종합한 최종 결과물입니다.
     """
@@ -134,32 +79,6 @@ class Spec(BaseModel):
     workflow: list[WorkflowStep] = Field(default_factory=list)
     decisions: list[DecisionRule] = Field(default_factory=list)
     raw_patterns: list[dict[str, Any]] = Field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        """딕셔너리로 변환 (기존 호환)"""
-        return {
-            "meta": self.meta.to_dict(),
-            "workflow": [w.to_dict() for w in self.workflow],
-            "decisions": {"rules": [d.to_dict() for d in self.decisions]},
-            "raw_patterns": self.raw_patterns,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Spec":
-        """딕셔너리에서 생성 (기존 호환)"""
-        meta_data = data["meta"]
-        return cls(
-            meta=SpecMeta(
-                name=meta_data["name"],
-                version=meta_data.get("version", "1.0"),
-                created_at=datetime.fromisoformat(meta_data["created_at"]) if "created_at" in meta_data else datetime.now(),
-                description=meta_data.get("description", ""),
-                source_sessions=meta_data.get("source_sessions", []),
-            ),
-            workflow=[WorkflowStep.from_dict(w) for w in data.get("workflow", [])],
-            decisions=[DecisionRule.from_dict(d) for d in data.get("decisions", {}).get("rules", [])],
-            raw_patterns=data.get("raw_patterns", []),
-        )
 
 
 class SpecChange(BaseModel):

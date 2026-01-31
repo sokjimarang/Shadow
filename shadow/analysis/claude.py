@@ -143,10 +143,6 @@ class ClaudeAnalyzer(BaseVisionAnalyzer):
         )
 
     @property
-    def backend(self) -> AnalyzerBackend:
-        return AnalyzerBackend.CLAUDE
-
-    @property
     def model_name(self) -> str:
         return self._model
 

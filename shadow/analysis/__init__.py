@@ -1,8 +1,7 @@
 """AI 분석 모듈
 
 지원 백엔드:
-- Claude Opus 4.5 (권장)
-- Qwen (로컬) - 추후 지원 예정
+- Claude Opus 4.5
 """
 
 from shadow.analysis.base import AnalyzerBackend, BaseVisionAnalyzer
