@@ -21,7 +21,7 @@ from shadow.analysis.models import LabeledAction
 from shadow.analysis.claude import ClaudeAnalyzer
 from shadow.analysis.gemini import GeminiAnalyzer
 from shadow.api.errors import ShadowAPIError, general_exception_handler, shadow_api_error_handler
-from shadow.api.routers import agent_router, hitl_router, specs_router
+from shadow.api.routers import agent_router, hitl_router, slack_router, specs_router
 from shadow.capture.recorder import Recorder, RecordingSession
 from shadow.config import settings
 from shadow.patterns.detector import PatternDetector
@@ -70,6 +70,7 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.include_router(agent_router)  # /api/v1/*
 app.include_router(hitl_router)  # /api/hitl/*
 app.include_router(specs_router)  # /api/specs/*
+app.include_router(slack_router)  # /slack/*
 
 
 # === 요청/응답 모델 ===
