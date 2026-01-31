@@ -1,307 +1,389 @@
 # 시나리오 1: PM의 Slack 문의 답변 자동화
 
-**버전: v1.0
-작성일: 2026-01-31**
+**버전: v2.0**  
+**작성일: 2026-02-01**
 
 ---
 
-## 1. 개요
+## 1. 페르소나
 
-### 1.1 대상 페르소나
-- **역할**: Product Manager (PM)
-- **업무**: Slack으로 들어오는 서비스 스펙 관련 문의에 답변
-- **사용 툴**: JIRA, Google Drive, Slack
+### 1.1 기본 정보
 
-### 1.2 핵심 문제
-PM은 하루에 수십 건의 Slack 문의를 받지만, 대부분은 JIRA 티켓이나 Google Drive 회의록에 이미 정리된 내용이다. 하지만 매번 문서를 찾아 답변하는 데 시간이 소요된다.
+| 항목 | 내용 |
+|------|------|
+| **역할** | Product Manager (PM) |
+| **회사 규모** | 50-200명 스타트업/중소기업 |
+| **업무 경력** | 3-5년차 |
+| **팀 구성** | 개발자 5-8명, 디자이너 1-2명과 협업 |
 
-### 1.3 Shadow 솔루션
-PM이 Slack 문의에 답변하는 패턴을 관찰하여, 어떤 키워드로 검색하고, 어떻게 답변을 작성하는지 학습한다. 이후 유사한 문의가 오면 자동으로 답변 초안을 생성하거나, Slack 봇이 직접 답변한다.
+### 1.2 업무 컨텍스트
+
+| 항목 | 내용 |
+|------|------|
+| **주요 업무** | 제품 기획, 스펙 정의, 이해관계자 커뮤니케이션 |
+| **일일 Slack 문의** | 15-25건 |
+| **문의 유형** | 스펙 확인 60%, 일정 문의 25%, 기타 15% |
+| **사용 도구** | Slack, JIRA, Google Drive, Figma |
+
+### 1.3 Pain Points
+
+1. **반복 답변**: 문의의 60%가 이미 JIRA나 회의록에 있는 내용
+2. **검색 시간**: 관련 문서를 찾는 데 평균 3-5분 소요
+3. **컨텍스트 스위칭**: Slack → JIRA → Drive → Slack 왕복이 집중력을 깨뜨림
+4. **암묵적 기준**: "어떤 문의에 어떤 문서를 참조하는가"가 본인 머릿속에만 있음
+
+### 1.4 왜 AI가 필요한가
+
+| 요소 | 설명 |
+|------|------|
+| **자연어 이해** | "결제 어떻게 돼요?" vs "결제 플로우 스펙" vs "PG 연동 일정" 구분 |
+| **다중 소스 검색** | JIRA + Google Drive를 동시에 검색하고 우선순위 판단 |
+| **맥락 기반 요약** | 10페이지 회의록에서 질문에 맞는 부분만 추출 |
+| **암묵적 규칙** | "개발팀 질문은 티켓 링크 필수, 디자인팀은 Figma 링크 우선" |
 
 ---
 
-## 2. Shadow 데이터 흐름
+## 2. 시나리오 흐름
 
-### 2.1 OBSERVE (관찰)
+### 2.1 트리거 상황
 
-**수집 데이터:**
-- Slack 앱에서 DM/채널 메시지 수신 이벤트
-- JIRA 브라우저 탭에서 검색 키워드 입력
-- Google Drive 검색 및 문서 열람
-- Slack으로 돌아와 답변 작성
+> 개발자 김철수가 #product-questions 채널에 메시지를 보냄:
+> "결제 실패 시 재시도 로직 스펙이 어떻게 되나요? 3회까지인지 5회까지인지 헷갈려서요"
+
+### 2.2 현재 PM의 행동 패턴 (Shadow가 관찰)
+
+```
+1. Slack에서 질문 확인 (10초)
+2. JIRA로 이동, "결제 재시도" 검색 (30초)
+3. 검색 결과 3개 중 관련 티켓 클릭 (20초)
+4. 티켓 내용 확인 - 스펙 일부만 있음 (40초)
+5. Google Drive로 이동, "결제 스펙" 검색 (30초)
+6. "결제 모듈 상세 스펙 v2.1" 문서 열기 (20초)
+7. Ctrl+F로 "재시도" 검색, 해당 섹션 찾기 (40초)
+8. Slack으로 돌아와 답변 작성 (60초)
+   - JIRA 티켓 링크 포함
+   - Drive 문서 링크 포함
+   - 핵심 내용 요약
+```
+
+**총 소요 시간: 약 4분 10초**
+
+### 2.3 앱 전환 흐름 (3개 앱)
+
+```
+[Slack] ──질문 확인──→ [JIRA] ──검색──→ [Google Drive] ──추가 검색──→ [Slack]
+   │                      │                    │                      │
+   │                      │                    │                      │
+   ▼                      ▼                    ▼                      ▼
+ 질문 읽기            티켓 검색           회의록/스펙 검색         답변 작성
+ 키워드 파악          관련 티켓 확인       상세 내용 확인          링크 + 요약
+```
+
+---
+
+## 3. Shadow 데이터 흐름
+
+### 3.1 OBSERVE (관찰)
+
+**수집 이벤트 시퀀스:**
+
+| 순서 | 앱 | 행동 | 캡처 데이터 |
+|------|-----|------|------------|
+| 1 | Slack | 메시지 클릭 | before/after 스크린샷, 클릭 좌표 |
+| 2 | Chrome | JIRA 탭 클릭 | 앱 전환 이벤트 |
+| 3 | JIRA | 검색창 클릭 + 타이핑 | 검색어: "결제 재시도" |
+| 4 | JIRA | 검색 결과 클릭 | 티켓 ID: PAY-234 |
+| 5 | Chrome | 새 탭 열기 | Google Drive 이동 |
+| 6 | Drive | 검색창 클릭 + 타이핑 | 검색어: "결제 스펙" |
+| 7 | Drive | 문서 클릭 | 문서명: "결제 모듈 상세 스펙 v2.1" |
+| 8 | Drive | Ctrl+F + 타이핑 | 검색어: "재시도" |
+| 9 | Slack | 메시지 입력창 클릭 | 앱 전환 이벤트 |
+| 10 | Slack | 답변 타이핑 | 답변 내용 (링크 포함) |
 
 **RawObservation 예시:**
 ```json
 {
-  "id": "obs_001",
-  "session_id": "session_pm_001",
-  "timestamp": "2026-01-31T14:00:00Z",
-  "before_screenshot_id": "screenshot_before_001",
-  "after_screenshot_id": "screenshot_after_001",
+  "id": "obs_pm_001",
+  "session_id": "session_pm_20260201_001",
+  "timestamp": "2026-02-01T14:30:15Z",
+  "before_screenshot_id": "ss_before_001",
+  "after_screenshot_id": "ss_after_001",
   "event_id": "event_click_001"
 }
 ```
 
-**InputEvent 예시:**
+### 3.2 ANALYZE (분석)
+
+**행동 라벨링 (VLM + LLM):**
+
 ```json
 {
-  "id": "event_click_001",
-  "type": "mouse_click",
-  "position": {"x": 300, "y": 150},
-  "button": "left",
-  "active_window": {
-    "title": "#product-questions - Slack",
-    "app_name": "Slack",
-    "app_bundle_id": "com.tinyspeck.slackmacgap"
-  }
-}
-```
-
-### 2.2 ANALYZE (분석)
-
-**행동 라벨링 (VLM):**
-```json
-{
-  "id": "action_001",
-  "observation_id": "obs_001",
+  "id": "action_pm_001",
+  "observation_id": "obs_pm_001",
   "action_type": "click",
   "target_element": "slack_message",
   "app": "Slack",
-  "semantic_label": "Slack 채널에서 '결제 기능 스펙' 관련 질문 확인",
-  "intent_guess": "문의 내용 파악",
-  "confidence": 0.95
+  "semantic_label": "Slack에서 '결제 재시도 스펙' 관련 질문 확인",
+  "extracted_keywords": ["결제", "재시도", "스펙", "3회", "5회"],
+  "intent_guess": "문의 내용 파악 및 키워드 추출"
 }
 ```
 
-**패턴 감지 (LLM):**
-3회 이상 관찰 후 DetectedPattern 생성:
+**패턴 감지 (3회 관찰 후):**
+
 ```json
 {
   "id": "pattern_pm_001",
-  "name": "Slack 문의 → JIRA/Drive 검색 → 답변",
+  "name": "Slack 문의 → JIRA → Drive → Slack 답변",
+  "observation_count": 3,
   "core_sequence": [
-    {"order": 1, "action_type": "click", "target_pattern": "slack_message", "app": "Slack"},
-    {"order": 2, "action_type": "navigate", "target_pattern": "JIRA 검색", "app": "Chrome"},
-    {"order": 3, "action_type": "type", "target_pattern": "검색어 입력", "app": "Chrome"},
-    {"order": 4, "action_type": "click", "target_pattern": "검색 결과 티켓", "app": "Chrome"},
-    {"order": 5, "action_type": "navigate", "target_pattern": "Slack", "app": "Slack"},
-    {"order": 6, "action_type": "type", "target_pattern": "답변 작성", "app": "Slack"}
+    {"order": 1, "action": "read_message", "app": "Slack", "output": "question_keywords"},
+    {"order": 2, "action": "search", "app": "JIRA", "input": "question_keywords"},
+    {"order": 3, "action": "read_ticket", "app": "JIRA", "output": "jira_info"},
+    {"order": 4, "action": "search", "app": "Google Drive", "input": "question_keywords"},
+    {"order": 5, "action": "read_document", "app": "Google Drive", "output": "drive_info"},
+    {"order": 6, "action": "compose_reply", "app": "Slack", "input": ["jira_info", "drive_info"]}
   ],
   "uncertainties": [
     {
       "type": "condition",
-      "description": "어떤 키워드로 JIRA를 검색하는가?",
-      "hypothesis": "질문에서 핵심 키워드를 추출하여 검색"
+      "step": 4,
+      "description": "언제 Google Drive를 추가로 검색하는가?",
+      "hypothesis": "JIRA 티켓에 상세 스펙이 없을 때"
     },
     {
       "type": "quality",
-      "description": "답변에 항상 JIRA 링크를 포함하는가?",
-      "hypothesis": "항상 티켓 링크를 포함"
+      "step": 6,
+      "description": "답변에 항상 두 링크(JIRA + Drive)를 포함하는가?",
+      "hypothesis": "상세 스펙 질문일 때만 Drive 링크 포함"
+    },
+    {
+      "type": "condition",
+      "step": 2,
+      "description": "JIRA 검색어를 어떻게 결정하는가?",
+      "hypothesis": "질문에서 핵심 명사 2-3개 추출"
     }
   ]
 }
 ```
 
-### 2.3 CLARIFY (HITL 질문)
+### 3.3 CLARIFY (HITL 질문)
 
-**생성된 질문:**
+**질문 1 - Drive 검색 조건:**
 
-**질문 1 - 가설 검증:**
 ```json
 {
-  "id": "question_001",
+  "id": "question_pm_001",
   "type": "hypothesis",
-  "question_text": "Slack 문의에 답변할 때, 항상 JIRA 티켓 링크를 포함하시는 것 같은데 맞나요?",
-  "context": "최근 3건의 답변에서 모두 JIRA 링크가 포함되어 있었습니다.",
+  "question_text": "JIRA 티켓에 상세 스펙이 없을 때 Google Drive를 추가로 검색하시는 것 같은데, 맞나요?",
+  "context": "최근 5건의 답변 중 3건에서 JIRA 검색 후 Drive를 추가 검색했습니다. 3건 모두 '상세', '구체적', '정확한 수치' 관련 질문이었습니다.",
   "options": [
-    {"id": "opt_1", "label": "네, 항상 포함합니다", "action": "add_rule"},
-    {"id": "opt_2", "label": "중요한 질문에만 포함합니다", "action": "add_condition"},
-    {"id": "opt_3", "label": "아니요, 선택적입니다", "action": "reject"}
+    {"id": "opt_1", "label": "네, JIRA에 상세 내용이 없으면 Drive 검색합니다", "action": "add_rule"},
+    {"id": "opt_2", "label": "스펙 관련 질문은 항상 JIRA + Drive 둘 다 검색합니다", "action": "update_rule"},
+    {"id": "opt_3", "label": "질문자가 개발자일 때만 Drive까지 검색합니다", "action": "add_condition"}
   ]
 }
 ```
 
-**질문 2 - 품질 확인:**
+**질문 2 - 답변 포맷:**
+
 ```json
 {
-  "id": "question_002",
+  "id": "question_pm_002",
   "type": "quality",
-  "question_text": "JIRA 티켓 검색 결과가 3개 미만일 때 Google Drive 회의록을 추가로 확인하시는 것 같은데, 맞나요?",
-  "context": "최근 5건의 답변 중 3건에서 JIRA 검색 결과가 적을 때(0~2개) Google Drive를 추가로 검색했습니다.",
+  "question_text": "답변에 항상 JIRA 티켓 링크를 포함하시는 것 같은데, 맞나요?",
+  "context": "최근 8건의 답변에서 모두 JIRA 링크가 포함되어 있었습니다.",
   "options": [
-    {"id": "opt_1", "label": "네, 검색 결과 3개 미만이면 Drive도 확인합니다", "action": "add_rule"},
-    {"id": "opt_2", "label": "아니요, JIRA에서 0건일 때만 Drive 확인합니다", "action": "update_condition"},
-    {"id": "opt_3", "label": "질문 내용이 중요할 때만 Drive 확인합니다", "action": "add_condition"}
+    {"id": "opt_1", "label": "네, 항상 JIRA 링크를 포함합니다", "action": "add_rule"},
+    {"id": "opt_2", "label": "개발팀 질문에만 JIRA 링크를 포함합니다", "action": "add_condition"},
+    {"id": "opt_3", "label": "관련 티켓이 있을 때만 포함합니다", "action": "add_condition"}
   ]
 }
 ```
 
-**Slack으로 전송:**
-Shadow Slack Bot이 PM에게 DM으로 질문 전송. PM은 버튼 클릭으로 답변.
+**질문 3 - 검색어 추출:**
 
-### 2.4 PROCESS (응답 처리)
-
-**사용자 응답:**
 ```json
 {
-  "id": "answer_001",
-  "question_id": "question_001",
-  "selected_option_id": "opt_1",
-  "user_id": "user_pm",
-  "timestamp": "2026-01-31T14:10:00Z"
+  "id": "question_pm_003",
+  "type": "hypothesis",
+  "question_text": "질문에서 기능명과 상태(실패, 성공 등)를 조합해서 JIRA를 검색하시는 것 같은데, 맞나요?",
+  "context": "'결제 실패 시 재시도' 질문에서 '결제 재시도'로 검색하셨습니다. 다른 2건에서도 유사한 패턴이 관찰되었습니다.",
+  "options": [
+    {"id": "opt_1", "label": "네, 기능명 + 상태/동작을 조합합니다", "action": "add_rule"},
+    {"id": "opt_2", "label": "질문의 핵심 명사만 추출합니다", "action": "update_rule"},
+    {"id": "opt_3", "label": "상황에 따라 다릅니다", "action": "reject"}
+  ]
 }
 ```
 
-**해석:**
+### 3.4 PROCESS (응답 처리)
+
+**사용자 응답 예시:**
+
+질문 1에 opt_2 선택: "스펙 관련 질문은 항상 JIRA + Drive 둘 다 검색합니다"
+
 ```json
 {
-  "id": "interpreted_001",
-  "answer_id": "answer_001",
-  "action": "add_rule",
+  "id": "answer_pm_001",
+  "question_id": "question_pm_001",
+  "selected_option_id": "opt_2",
+  "timestamp": "2026-02-01T15:00:00Z"
+}
+```
+
+**명세서 업데이트:**
+
+```json
+{
   "spec_update": {
-    "path": "quality.required_fields",
+    "path": "decisions.rules",
     "operation": "add",
     "value": {
-      "field": "jira_link",
-      "description": "JIRA 티켓 링크 필수",
-      "format": "url"
+      "id": "rule_search_scope",
+      "condition": "question_type == 'spec'",
+      "action": "search_both_jira_and_drive",
+      "description": "스펙 관련 질문은 JIRA와 Google Drive 모두 검색",
+      "source": "user_confirmed"
     }
-  },
-  "confidence": 1.0
+  }
 }
 ```
 
-### 2.5 NOTIFY (알림)
+### 3.5 NOTIFY (알림)
 
-**Slack 알림:**
 ```
 ✅ 명세서가 업데이트되었습니다.
 
 - 업무: Slack 문의 답변
-- 변경 사항: 답변에 JIRA 링크 필수로 추가됨
-- 버전: v1.1.0 → v1.2.0
+- 변경 사항: 스펙 질문 시 JIRA + Drive 동시 검색 규칙 추가
+- 버전: v1.0.0 → v1.1.0
 
-자세한 내용: https://shadow.app/specs/spec_pm_001
+[명세서 보기]
 ```
 
 ---
 
-## 3. 생성되는 에이전트 명세서 (AgentSpec)
+## 4. 생성되는 에이전트 명세서
 
 ```json
 {
   "meta": {
     "id": "spec_pm_001",
     "name": "Slack 문의 답변 자동화",
-    "description": "JIRA/Drive를 검색하여 Slack 문의에 답변",
+    "description": "JIRA와 Google Drive를 검색하여 Slack 문의에 답변",
     "version": "1.2.0",
     "status": "active"
   },
 
   "trigger": {
-    "description": "Slack에서 특정 채널/DM에 멘션 또는 질문 수신",
+    "description": "Slack #product-questions 채널에 질문이 올라올 때",
     "conditions": [
-      {
-        "type": "app_active",
-        "app": "Slack",
-        "context": "message_received"
-      },
-      {
-        "type": "content_match",
-        "field": "message",
-        "pattern": ".*스펙.*|.*기능.*|.*언제.*"
-      }
+      {"type": "app_event", "app": "Slack", "event": "message_received"},
+      {"type": "content_match", "pattern": ".*스펙.*|.*어떻게.*|.*언제.*|.*확인.*"}
     ],
     "operator": "AND"
   },
 
   "workflow": {
-    "description": "Slack 문의 확인 → JIRA 검색 → 답변 작성",
+    "description": "질문 분석 → JIRA 검색 → Drive 검색 → 답변 작성",
     "steps": [
       {
         "order": 1,
-        "id": "step_read_message",
-        "action": "extract_text",
-        "target": "slack_message",
-        "app": "Slack",
-        "description": "Slack 메시지에서 질문 내용 추출",
-        "output": "question_text"
-      },
-      {
-        "order": 2,
-        "id": "step_extract_keywords",
+        "id": "step_analyze_question",
         "action": "extract_keywords",
-        "target": "question_text",
+        "app": "Slack",
         "description": "질문에서 검색 키워드 추출",
         "output": "search_keywords"
       },
       {
-        "order": 3,
+        "order": 2,
         "id": "step_search_jira",
         "action": "search",
-        "target": "JIRA",
-        "app": "Chrome",
+        "app": "JIRA",
         "description": "JIRA에서 관련 티켓 검색",
         "input": "search_keywords",
         "output": "jira_results"
       },
       {
+        "order": 3,
+        "id": "step_read_jira",
+        "action": "read_content",
+        "app": "JIRA",
+        "description": "검색된 티켓 내용 확인",
+        "input": "jira_results",
+        "output": "jira_info"
+      },
+      {
         "order": 4,
-        "id": "step_check_results",
-        "action": "check_condition",
-        "description": "JIRA 검색 결과 있는지 확인",
-        "output": "has_results"
+        "id": "step_search_drive",
+        "action": "search",
+        "app": "Google Drive",
+        "description": "Google Drive에서 관련 문서 검색",
+        "input": "search_keywords",
+        "output": "drive_results",
+        "condition": "question_type == 'spec'"
       },
       {
         "order": 5,
-        "id": "step_search_drive",
-        "action": "search",
-        "target": "Google Drive",
-        "app": "Chrome",
-        "description": "JIRA에 없으면 Google Drive 회의록 검색",
-        "condition": "has_results == false",
-        "input": "search_keywords",
-        "output": "drive_results",
-        "is_variable": true
+        "id": "step_read_drive",
+        "action": "read_content",
+        "app": "Google Drive",
+        "description": "검색된 문서에서 관련 내용 추출",
+        "input": "drive_results",
+        "output": "drive_info",
+        "condition": "drive_results.length > 0"
       },
       {
         "order": 6,
-        "id": "step_compose_answer",
+        "id": "step_compose_reply",
         "action": "compose_text",
+        "app": "Slack",
         "description": "검색 결과를 바탕으로 답변 작성",
-        "input": "jira_results or drive_results",
-        "output": "answer_text"
+        "input": ["jira_info", "drive_info"],
+        "output": "reply_text"
       },
       {
         "order": 7,
-        "id": "step_send_answer",
-        "action": "type",
-        "target": "slack_reply",
+        "id": "step_send_reply",
+        "action": "send_message",
         "app": "Slack",
-        "description": "Slack에 답변 전송",
-        "input": "answer_text"
+        "description": "답변 전송",
+        "input": "reply_text"
       }
     ]
   },
 
   "decisions": {
-    "description": "검색 및 답변 작성 기준",
+    "description": "검색 범위 및 답변 포맷 기준",
     "rules": [
       {
-        "id": "rule_search_priority",
-        "condition": "always",
-        "action": "search_jira_first",
-        "description": "항상 JIRA를 먼저 검색",
-        "source": "user_confirmed",
-        "confidence": 1.0
+        "id": "rule_search_scope",
+        "condition": "question_type == 'spec'",
+        "action": "search_both_jira_and_drive",
+        "description": "스펙 관련 질문은 JIRA와 Drive 모두 검색",
+        "source": "user_confirmed"
       },
       {
-        "id": "rule_fallback_drive",
-        "condition": "jira_results.length == 0",
-        "action": "search_drive",
-        "description": "JIRA에 없으면 Google Drive 검색",
-        "source": "user_confirmed",
-        "confidence": 1.0
+        "id": "rule_jira_link",
+        "condition": "jira_results.length > 0",
+        "action": "include_jira_link",
+        "description": "관련 티켓이 있으면 JIRA 링크 포함",
+        "source": "user_confirmed"
+      },
+      {
+        "id": "rule_drive_link",
+        "condition": "question_type == 'spec' && drive_results.length > 0",
+        "action": "include_drive_link",
+        "description": "스펙 질문이고 문서가 있으면 Drive 링크 포함",
+        "source": "user_confirmed"
+      },
+      {
+        "id": "rule_keyword_extraction",
+        "condition": "always",
+        "action": "extract_feature_and_action",
+        "description": "기능명 + 상태/동작 조합으로 검색어 생성",
+        "source": "user_confirmed"
       }
     ]
   },
@@ -309,13 +391,13 @@ Shadow Slack Bot이 PM에게 DM으로 질문 전송. PM은 버튼 클릭으로 �
   "boundaries": {
     "always_do": [
       {
-        "id": "always_include_link",
-        "description": "답변에 항상 JIRA 티켓 링크 포함",
+        "id": "always_summarize",
+        "description": "링크만 보내지 않고 핵심 내용 요약 포함",
         "source": "user_confirmed"
       },
       {
-        "id": "always_context",
-        "description": "티켓 내용을 요약하여 전달 (링크만 보내지 않음)",
+        "id": "always_jira_link",
+        "description": "관련 JIRA 티켓 링크 포함",
         "source": "user_confirmed"
       }
     ],
@@ -323,14 +405,25 @@ Shadow Slack Bot이 PM에게 DM으로 질문 전송. PM은 버튼 클릭으로 �
       {
         "id": "ask_no_results",
         "condition": "jira_results.length == 0 && drive_results.length == 0",
-        "description": "검색 결과가 없으면 PM에게 확인 요청",
+        "description": "검색 결과가 없으면 PM에게 확인",
+        "source": "user_confirmed"
+      },
+      {
+        "id": "ask_multiple_matches",
+        "condition": "jira_results.length > 3",
+        "description": "관련 티켓이 3개 초과면 어떤 것이 맞는지 확인",
         "source": "inferred"
       }
     ],
     "never_do": [
       {
-        "id": "never_fabricate",
-        "description": "검색 결과가 없을 때 추측으로 답변하지 않음",
+        "id": "never_guess",
+        "description": "검색 결과 없이 추측으로 답변하지 않음",
+        "source": "user_confirmed"
+      },
+      {
+        "id": "never_outdated",
+        "description": "6개월 이상 된 문서는 최신 여부 확인 없이 인용하지 않음",
         "source": "inferred"
       }
     ]
@@ -339,100 +432,62 @@ Shadow Slack Bot이 PM에게 DM으로 질문 전송. PM은 버튼 클릭으로 �
   "quality": {
     "description": "답변 품질 기준",
     "required_fields": [
-      {
-        "field": "jira_link",
-        "description": "JIRA 티켓 링크",
-        "format": "url"
-      },
-      {
-        "field": "summary",
-        "description": "티켓 내용 요약",
-        "format": "text"
-      }
+      {"field": "summary", "description": "핵심 내용 요약 (2-3문장)"},
+      {"field": "jira_link", "description": "JIRA 티켓 링크"},
+      {"field": "drive_link", "description": "Drive 문서 링크 (스펙 질문 시)", "conditional": true}
     ],
-    "validations": [
-      {
-        "field": "jira_link",
-        "rule": "valid_url",
-        "description": "올바른 JIRA URL 형식"
-      }
-    ]
+    "format": {
+      "tone": "professional_friendly",
+      "max_length": "300자",
+      "structure": ["요약", "상세 링크", "추가 질문 유도"]
+    }
   },
 
   "exceptions": [
     {
       "id": "exc_urgent",
-      "condition": "message contains '긴급'",
+      "condition": "message contains '긴급' or '장애'",
       "action": "notify_pm_immediately",
-      "description": "긴급 문의는 PM에게 즉시 알림",
+      "description": "긴급/장애 문의는 자동 답변 없이 PM에게 즉시 알림",
       "source": "inferred"
     },
     {
-      "id": "exc_no_results",
-      "condition": "no search results found",
-      "action": "ask_pm",
-      "description": "검색 결과 없으면 PM에게 질문",
-      "source": "user_confirmed"
+      "id": "exc_confidential",
+      "condition": "document marked as 'confidential'",
+      "action": "ask_pm_before_sharing",
+      "description": "기밀 문서는 공유 전 PM 확인",
+      "source": "inferred"
     }
   ],
 
   "tools": [
-    {
-      "type": "app",
-      "name": "Slack",
-      "required": true,
-      "permissions": ["read_messages", "send_messages"]
-    },
-    {
-      "type": "service",
-      "name": "JIRA",
-      "required": true,
-      "permissions": ["search", "read_issues"]
-    },
-    {
-      "type": "service",
-      "name": "Google Drive",
-      "required": true,
-      "permissions": ["search", "read_files"]
-    }
+    {"type": "app", "name": "Slack", "required": true, "permissions": ["read_messages", "send_messages"]},
+    {"type": "service", "name": "JIRA", "required": true, "permissions": ["search", "read_issues"]},
+    {"type": "service", "name": "Google Drive", "required": true, "permissions": ["search", "read_files"]}
   ]
 }
 ```
 
 ---
 
-## 4. 산출물: Slack Bot
-
-### 4.1 자동화 단계
-
-**Phase 1: 답변 초안 생성**
-- PM이 답변하기 전에 자동으로 JIRA/Drive 검색
-- 검색 결과를 바탕으로 답변 초안 생성
-- PM이 확인 후 전송
-
-**Phase 2: 자동 답변**
-- 명세서의 confidence_score가 0.9 이상일 때
-- 간단한 문의는 Slack Bot이 직접 답변
-- 복잡한 문의는 PM에게 에스컬레이션
-
-### 4.2 대시보드
-
-**표시 정보:**
-- JIRA 프로젝트별 문의 빈도
-- Google Drive 문서별 참조 횟수
-- 자주 묻는 질문 Top 10
-- 자동 답변 성공률
-
----
-
 ## 5. 성공 지표
 
-| 지표 | 목표 | 측정 방법 |
-|-----|------|----------|
-| 답변 시간 단축 | 평균 5분 → 1분 | 문의 수신부터 답변까지 시간 |
-| 자동 답변 비율 | 50% 이상 | 전체 문의 중 Bot 자동 답변 비율 |
-| 답변 정확도 | 90% 이상 | PM 피드백 기반 정확도 |
-| PM 만족도 | 4.5/5 이상 | 주간 설문조사 |
+### 5.1 구조적 완성도 (자동 측정)
+
+| 지표 | 측정 방법 | 목표 |
+|------|----------|------|
+| 필수 필드 완성도 | meta, trigger, workflow, decisions, boundaries 존재 | 100% |
+| 규칙 구체성 | 모호한 표현("적절히", "상황에 따라") 개수 | 0개 |
+| 예외 커버리지 | exceptions 항목 수 | 2개 이상 |
+| 앱 커버리지 | 관찰된 앱이 tools에 모두 포함 | 100% |
+
+### 5.2 사용자 평가 (주관)
+
+| 지표 | 질문 | 목표 |
+|------|------|------|
+| 정확도 | "이게 내 업무 방식 맞아?" | 4/5 이상 |
+| 완성도 | "빠진 규칙이 있어?" | "없음" 응답 |
+| 실행 가능성 | "다른 PM이 이걸 보고 따라할 수 있어?" | 4/5 이상 |
 
 ---
 
