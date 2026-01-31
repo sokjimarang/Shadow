@@ -157,6 +157,6 @@ CREATE TRIGGER update_sessions_updated_at
 
 -- Comments for documentation
 COMMENT ON TABLE sessions IS 'Stores recording session information from shadow-py';
-COMMENT ON TABLE analysis_results IS 'Stores AI analysis results (Claude/Gemini) for each session';
+COMMENT ON TABLE analysis_results IS 'Stores AI analysis results (Claude) for each session';
 COMMENT ON TABLE patterns IS 'Stores detected repetitive patterns';
 COMMENT ON TABLE slack_events IS 'Stores Slack bot event logs';

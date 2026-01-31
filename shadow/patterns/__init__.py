@@ -1,6 +1,11 @@
 """패턴 감지 모듈"""
 
-from shadow.patterns.detector import PatternDetector
+from shadow.patterns.analyzer import (
+    BasePatternAnalyzer,
+    ClaudePatternAnalyzer,
+    PatternAnalyzerBackend,
+    create_pattern_analyzer,
+)
 from shadow.patterns.models import (
     ActionTemplate,
     DetectedPattern,
@@ -8,11 +13,6 @@ from shadow.patterns.models import (
     Uncertainty,
     UncertaintyType,
     Variation,
-)
-from shadow.patterns.similarity import (
-    action_sequence_similarity,
-    exact_sequence_match,
-    find_similar_subsequences,
 )
 
 __all__ = [
@@ -24,10 +24,9 @@ __all__ = [
     # 불확실성 모델
     "Uncertainty",
     "UncertaintyType",
-    # 감지기
-    "PatternDetector",
-    # 유틸리티
-    "action_sequence_similarity",
-    "exact_sequence_match",
-    "find_similar_subsequences",
+    # LLM 기반 분석기
+    "BasePatternAnalyzer",
+    "PatternAnalyzerBackend",
+    "ClaudePatternAnalyzer",
+    "create_pattern_analyzer",
 ]

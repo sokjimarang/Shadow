@@ -16,9 +16,6 @@ dependencies = [
     "pynput>=1.7.0",
     "pillow>=10.0.0",
 
-    # Vision AI - Gemini
-    "google-genai>=1.0.0",
-
     # Vision AI - Claude
     "anthropic>=0.40.0",
 
@@ -38,4 +35,10 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "integration: 실제 API 호출이 필요한 통합 테스트",
 ]
