@@ -42,3 +42,4 @@ Thumbs.db
 # Project specific
 *.log
 recordings/
+/outputs/mock_e2e_spec.json
