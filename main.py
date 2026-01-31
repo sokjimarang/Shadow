@@ -19,12 +19,11 @@ from pydantic import BaseModel, Field
 
 from shadow.analysis.models import LabeledAction
 from shadow.analysis.claude import ClaudeAnalyzer
-from shadow.analysis.gemini import GeminiAnalyzer
 from shadow.api.errors import ShadowAPIError, general_exception_handler, shadow_api_error_handler
 from shadow.api.routers import agent_router, hitl_router, slack_router, specs_router
 from shadow.capture.recorder import Recorder, RecordingSession
 from shadow.config import settings
-from shadow.patterns.detector import PatternDetector
+from shadow.patterns import create_pattern_analyzer
 from shadow.preprocessing.keyframe import KeyframeExtractor
 
 
@@ -83,7 +82,7 @@ class RecordingStartRequest(BaseModel):
 
 
 class AnalyzeRequest(BaseModel):
-    backend: str = Field(default="claude", description="분석 백엔드 (claude/gemini)")
+    backend: str = Field(default="claude", description="분석 백엔드 (claude)")
 
 
 class RecordingStatus(BaseModel):
@@ -195,10 +194,6 @@ async def analyze_session(request: AnalyzeRequest, background_tasks: BackgroundT
         if not settings.anthropic_api_key:
             raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEY가 설정되지 않았습니다")
         analyzer = ClaudeAnalyzer()
-    elif request.backend == "gemini":
-        if not settings.gemini_api_key:
-            raise HTTPException(status_code=400, detail="GEMINI_API_KEY가 설정되지 않았습니다")
-        analyzer = GeminiAnalyzer()
     else:
         raise HTTPException(status_code=400, detail=f"지원하지 않는 백엔드: {request.backend}")
 
@@ -215,15 +210,19 @@ async def analyze_session(request: AnalyzeRequest, background_tasks: BackgroundT
             # 분석
             state.labels = await analyzer.analyze_batch(keyframes)
 
-            # 패턴 감지
+            # 패턴 감지 (LLM 기반)
             if state.labels:
-                detector = PatternDetector()
-                patterns = detector.detect(state.labels)
+                pattern_analyzer = create_pattern_analyzer("claude")
+                patterns = await pattern_analyzer.detect_patterns(state.labels)
                 state.patterns = [
                     {
+                        "name": p.name,
+                        "description": p.description,
                         "actions": [a.model_dump() for a in p.actions],
                         "occurrences": p.occurrence_indices,
                         "count": p.count,
+                        "confidence": p.confidence,
+                        "uncertainties": [u.model_dump() for u in p.uncertainties],
                     }
                     for p in patterns
                 ]

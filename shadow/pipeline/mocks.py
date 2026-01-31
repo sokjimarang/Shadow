@@ -271,6 +271,67 @@ class MockResponseHandler:
         return responses
 
 
+class MockPatternAnalyzer:
+    """Mock 패턴 분석기 - LLM 없이 더미 패턴 반환"""
+
+    def __init__(self, patterns: list[DetectedPattern] | None = None):
+        """
+        Args:
+            patterns: 반환할 더미 패턴 목록 (None이면 기본 패턴 생성)
+        """
+        self._patterns = patterns
+
+    def _create_default_patterns(
+        self, actions: list[LabeledAction]
+    ) -> list[DetectedPattern]:
+        """기본 더미 패턴 생성"""
+        if len(actions) < 6:
+            return []
+
+        # 2개 액션이 3회 반복되는 패턴 생성
+        pattern_actions = actions[:2] if len(actions) >= 2 else actions[:1]
+
+        return [
+            DetectedPattern(
+                name="저장 패턴",
+                description="파일을 저장하고 확인하는 반복 작업",
+                actions=pattern_actions,
+                occurrence_indices=[0, 2, 4],
+                confidence=0.9,
+                uncertainties=[
+                    Uncertainty(
+                        type=UncertaintyType.CONDITION,
+                        description="저장 전 조건 확인 여부",
+                        hypothesis="저장 전에 특정 조건을 확인하나요?",
+                        related_action_indices=[0],
+                    ),
+                    Uncertainty(
+                        type=UncertaintyType.OPTIONAL,
+                        description="확인 다이얼로그 생략 가능 여부",
+                        hypothesis="확인 다이얼로그를 생략할 수 있나요?",
+                        related_action_indices=[1],
+                    ),
+                ],
+            )
+        ]
+
+    async def detect_patterns(
+        self, actions: list[LabeledAction]
+    ) -> list[DetectedPattern]:
+        """패턴 감지 (Mock)
+
+        Args:
+            actions: 액션 시퀀스
+
+        Returns:
+            더미 DetectedPattern 목록
+        """
+        if self._patterns:
+            return self._patterns
+
+        return self._create_default_patterns(actions)
+
+
 class MockSpecBuilder:
     """Mock 명세서 빌더 - SpecBuilder 래퍼"""
 
@@ -315,14 +376,13 @@ def create_mock_pipeline(
         Mock 파이프라인 인스턴스
     """
     from shadow.hitl.generator import QuestionGenerator
-    from shadow.patterns.detector import PatternDetector
     from shadow.pipeline.pipeline import Pipeline
 
     return Pipeline(
         recorder=MockRecorder(),
         keyframe_extractor=MockKeyframeExtractor(),
         analyzer=MockAnalyzer(),
-        pattern_detector=PatternDetector(),  # 실제 구현 사용
+        pattern_analyzer=MockPatternAnalyzer(),  # LLM 기반 패턴 분석기 Mock
         question_generator=QuestionGenerator(),  # 실제 구현 사용
         slack_client=MockSlackClient(verbose=verbose),
         response_handler=MockResponseHandler(verbose=verbose),

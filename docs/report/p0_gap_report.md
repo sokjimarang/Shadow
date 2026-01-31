@@ -59,7 +59,7 @@
 ## F-04 행동 라벨링 (VLM)
 
 - **현재 구현**
-  - Claude/Gemini 분석기: `shadow/analysis/claude.py`, `shadow/analysis/gemini.py`
+  - Claude 분석기: `shadow/analysis/claude.py`
   - 키프레임 쌍 분석 로직: `shadow/analysis/base.py`, `shadow/preprocessing/keyframe.py`
 - **PRD 기준**
   - Before/After + 이벤트 입력 → semantic_label 생성
@@ -72,19 +72,17 @@
 
 ---
 
-## F-05 패턴 감지 (LLM)
+## F-05 패턴 감지 (LLM) ✅ 완료
 
 - **현재 구현**
-  - 규칙 기반 패턴 감지: `shadow/patterns/detector.py`
+  - LLM 기반 패턴 감지: `shadow/patterns/analyzer/claude.py`
+  - 패턴 + 불확실성(uncertainties) 한 번에 추출
 - **PRD 기준**
-  - LLM 기반 패턴 추론
-  - uncertainties 포함
-- **부족/갭**
-  - LLM 기반 패턴 감지 미구현 (명시적 미완료)
-  - uncertainties 자동 생성 없음
-- **앞으로 구현해야 할 부분**
-  - LLM 패턴 추론 모듈 추가
-  - uncertainties 생성/스코어링
+  - LLM 기반 패턴 추론 ✅
+  - uncertainties 포함 ✅
+- **남은 갭**
+  - 3개 이상 세션 비교 미구현 (현재 단일 세션만 처리)
+  - 3회 이상 반복 검증 로직 없음 (LLM 응답 신뢰)
 
 ---
 

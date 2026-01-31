@@ -65,7 +65,7 @@ class Pipeline:
         recorder,
         keyframe_extractor,
         analyzer,
-        pattern_detector,
+        pattern_analyzer,
         question_generator,
         slack_client,
         response_handler,
@@ -78,7 +78,7 @@ class Pipeline:
             recorder: 녹화기 (RecorderProtocol)
             keyframe_extractor: 키프레임 추출기 (KeyframeExtractorProtocol)
             analyzer: VLM 분석기 (AnalyzerProtocol)
-            pattern_detector: 패턴 감지기 (PatternDetectorProtocol)
+            pattern_analyzer: 패턴 분석기 (PatternAnalyzerProtocol) - LLM 기반 패턴 감지+불확실성 추출
             question_generator: 질문 생성기 (QuestionGeneratorProtocol)
             slack_client: Slack 클라이언트 (SlackClientProtocol)
             response_handler: 응답 핸들러 (ResponseHandlerProtocol)
@@ -89,7 +89,7 @@ class Pipeline:
         self._recorder = recorder
         self._keyframe_extractor = keyframe_extractor
         self._analyzer = analyzer
-        self._pattern_detector = pattern_detector
+        self._pattern_analyzer = pattern_analyzer
         self._question_generator = question_generator
         self._slack_client = slack_client
         self._response_handler = response_handler
@@ -140,10 +140,12 @@ class Pipeline:
                 result.error = "분석된 액션이 없습니다"
                 return result
 
-            # 4. Pattern 감지
-            self._log("\n[4/7] 패턴 감지 중...")
-            result.patterns = self._pattern_detector.detect(result.actions)
+            # 4. Pattern 감지 + 불확실성 분석 (LLM 기반)
+            self._log("\n[4/7] 패턴 감지 중 (LLM)...")
+            result.patterns = await self._pattern_analyzer.detect_patterns(result.actions)
             self._log(f"  - 패턴: {len(result.patterns)}개")
+            total_uncertainties = sum(len(p.uncertainties) for p in result.patterns)
+            self._log(f"  - 불확실 지점: {total_uncertainties}개")
             for pattern in result.patterns:
                 self._log(f"    - {pattern}")
 
