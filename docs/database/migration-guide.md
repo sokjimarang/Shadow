@@ -152,6 +152,9 @@ make db-status
 make db-migration-new
 # 프롬프트에서 마이그레이션 이름 입력
 
+# 또는 인자로 직접 전달
+make db-migration-new NAME=add_users_table
+
 # 마이그레이션 목록 확인 (로컬 vs 리모트)
 make db-migration-list
 
@@ -186,6 +189,11 @@ make db-migration-new
 생성된 파일: `supabase/migrations/YYYYMMDDHHMMSS_add_user_preferences.sql`
 
 ### 2. SQL 작성
+
+**⚠️ 중요 - UTF-8 인코딩 이슈 방지**:
+- **주석은 반드시 영문만 사용** (한글 주석 금지)
+- Migration 파일 작성 시 `cat > file.sql << 'EOF'` 방식 권장 (Claude Write 도구 대신)
+- 파일 인코딩: UTF-8 without BOM
 
 ```sql
 -- Add user_preferences table
@@ -327,6 +335,34 @@ supabase link --project-ref ddntzfdetgcobzohimvm
 
 # 상태 확인
 make db-status
+```
+
+### UTF-8 인코딩 오류
+
+**문제**: Migration 파일에 한글 주석이 있을 때 인코딩 오류 발생
+
+```bash
+# ❌ 오류 예시
+-- LabeledAction 테이블 생성  # 한글 주석으로 인한 UTF-8 오류
+```
+
+**해결책**:
+
+```bash
+# 1. 영문 주석으로 변경
+-- LabeledAction table (Analysis Layer)
+
+# 2. Bash heredoc으로 파일 작성 (Write 도구 대신)
+cat > supabase/migrations/YYYYMMDDHHMMSS_add_table.sql << 'EOF'
+-- English comments only
+CREATE TABLE example (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+);
+EOF
+
+# 3. 파일 인코딩 확인
+file -I supabase/migrations/*.sql
+# 출력: text/plain; charset=utf-8
 ```
 
 ---
