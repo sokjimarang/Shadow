@@ -77,9 +77,10 @@ make db-stop           # 로컬 Supabase 중지
 make db-status         # 연결 상태 및 URL 확인
 
 # 마이그레이션 관리
-make db-migration-new  # 새 마이그레이션 파일 생성
-make db-migration-list # 마이그레이션 목록 확인
-make db-reset          # 로컬 DB 초기화
+make db-migration-new                        # 대화형으로 마이그레이션 생성
+make db-migration-new NAME=add_users_table   # 인자로 마이그레이션 생성
+make db-migration-list                       # 마이그레이션 목록 확인
+make db-reset                                # 로컬 DB 초기화
 
 # 프로덕션 배포
 make db-push           # 프로덕션에 마이그레이션 배포
