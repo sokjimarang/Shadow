@@ -70,6 +70,7 @@ class InputEventCollector:
             button=button.name,
             app_name=window_info.app_name,
             window_title=window_info.window_title,
+            window_info=window_info,
         )
         self._emit_event(event)
 
@@ -79,6 +80,9 @@ class InputEventCollector:
 
     def _on_mouse_scroll(self, x: int, y: int, dx: int, dy: int) -> None:
         """마우스 스크롤 이벤트 핸들러"""
+        # F-03: 활성 윈도우 정보 수집
+        window_info = get_active_window()
+
         event = InputEvent(
             timestamp=time.time(),
             event_type=InputEventType.MOUSE_SCROLL,
@@ -86,26 +90,41 @@ class InputEventCollector:
             y=y,
             dx=dx,
             dy=dy,
+            app_name=window_info.app_name,
+            window_title=window_info.window_title,
+            window_info=window_info,
         )
         self._emit_event(event)
 
     def _on_key_press(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
         """키 누름 이벤트 핸들러"""
+        # F-03: 활성 윈도우 정보 수집
+        window_info = get_active_window()
+
         key_str = self._key_to_string(key)
         event = InputEvent(
             timestamp=time.time(),
             event_type=InputEventType.KEY_PRESS,
             key=key_str,
+            app_name=window_info.app_name,
+            window_title=window_info.window_title,
+            window_info=window_info,
         )
         self._emit_event(event)
 
     def _on_key_release(self, key: keyboard.Key | keyboard.KeyCode | None) -> None:
         """키 릴리즈 이벤트 핸들러"""
+        # F-03: 활성 윈도우 정보 수집
+        window_info = get_active_window()
+
         key_str = self._key_to_string(key)
         event = InputEvent(
             timestamp=time.time(),
             event_type=InputEventType.KEY_RELEASE,
             key=key_str,
+            app_name=window_info.app_name,
+            window_title=window_info.window_title,
+            window_info=window_info,
         )
         self._emit_event(event)
 
