@@ -18,6 +18,15 @@ class InputEventType(Enum):
 
 
 @dataclass
+class WindowInfo:
+    """활성 윈도우 정보"""
+
+    app_name: str  # 애플리케이션 이름
+    bundle_id: str | None = None  # Bundle ID
+    process_id: int | None = None  # 프로세스 ID
+
+
+@dataclass
 class Frame:
     """화면 캡처 프레임"""
 
@@ -45,6 +54,7 @@ class InputEvent:
     key: str | None = None  # 키보드 키
     dx: int | None = None  # 스크롤 X 변화량
     dy: int | None = None  # 스크롤 Y 변화량
+    window_info: WindowInfo | None = None  # 활성 윈도우 정보
 
 
 @dataclass
