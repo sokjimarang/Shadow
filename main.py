@@ -18,7 +18,7 @@ from typing import Any
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from shadow.analysis.base import ActionLabel
+from shadow.analysis.models import LabeledAction
 from shadow.analysis.claude import ClaudeAnalyzer
 from shadow.analysis.gemini import GeminiAnalyzer
 from shadow.capture.recorder import Recorder
@@ -37,7 +37,7 @@ class AppState:
         self.recorder: Recorder | None = None
         self.session: RecordingSession | None = None
         self.recording_thread: threading.Thread | None = None
-        self.labels: list[ActionLabel] = []
+        self.labels: list[LabeledAction] = []
         self.patterns: list[dict[str, Any]] = []
         self.is_analyzing: bool = False
 

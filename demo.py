@@ -11,9 +11,9 @@ import argparse
 import asyncio
 import sys
 
-from shadow.analysis import ActionLabel, AnalyzerBackend, ClaudeAnalyzer, create_analyzer
+from shadow.analysis import AnalyzerBackend, ClaudeAnalyzer, LabeledAction, create_analyzer
 from shadow.capture import InputEventType, Recorder
-from shadow.patterns import Pattern, PatternDetector
+from shadow.patterns import DetectedPattern, PatternDetector
 from shadow.preprocessing import KeyframeExtractor
 
 
@@ -24,7 +24,7 @@ def print_header(text: str) -> None:
     print("=" * 50)
 
 
-def print_patterns(patterns: list[Pattern]) -> None:
+def print_patterns(patterns: list[DetectedPattern]) -> None:
     """감지된 패턴 출력"""
     if not patterns:
         print("감지된 패턴 없음")
@@ -135,15 +135,15 @@ def test_without_api() -> None:
 
     # 테스트용 더미 액션
     actions = [
-        ActionLabel("click", "새로고침 버튼", "Chrome", "페이지 새로고침"),
-        ActionLabel("click", "검색창", "Chrome", "검색창 클릭"),
-        ActionLabel("type", "검색어", "Chrome", "검색어 입력"),
-        ActionLabel("click", "새로고침 버튼", "Chrome", "페이지 새로고침"),
-        ActionLabel("click", "검색창", "Chrome", "검색창 클릭"),
-        ActionLabel("type", "검색어", "Chrome", "검색어 입력"),
-        ActionLabel("click", "새로고침 버튼", "Chrome", "페이지 새로고침"),
-        ActionLabel("click", "검색창", "Chrome", "검색창 클릭"),
-        ActionLabel("type", "검색어", "Chrome", "검색어 입력"),
+        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
+        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
+        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
+        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
+        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
+        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
+        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
+        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
+        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
     ]
 
     print("테스트 액션 시퀀스:")

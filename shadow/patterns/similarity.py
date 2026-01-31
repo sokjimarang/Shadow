@@ -2,11 +2,11 @@
 
 from Levenshtein import ratio as levenshtein_ratio
 
-from shadow.analysis.gemini import ActionLabel
+from shadow.analysis.models import LabeledAction
 
 
 def action_sequence_similarity(
-    seq1: list[ActionLabel], seq2: list[ActionLabel]
+    seq1: list[LabeledAction], seq2: list[LabeledAction]
 ) -> float:
     """두 액션 시퀀스의 유사도 계산
 
@@ -30,7 +30,7 @@ def action_sequence_similarity(
 
 
 def find_similar_subsequences(
-    sequence: list[ActionLabel],
+    sequence: list[LabeledAction],
     min_length: int = 2,
     similarity_threshold: float = 0.8,
 ) -> list[tuple[int, int, int, int, float]]:
@@ -62,7 +62,7 @@ def find_similar_subsequences(
     return similar_pairs
 
 
-def exact_sequence_match(seq1: list[ActionLabel], seq2: list[ActionLabel]) -> bool:
+def exact_sequence_match(seq1: list[LabeledAction], seq2: list[LabeledAction]) -> bool:
     """두 시퀀스가 정확히 일치하는지 확인"""
     if len(seq1) != len(seq2):
         return False

@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     # Claude API
     anthropic_api_key: str = ""
 
+    # Slack API
+    slack_bot_token: str = ""
+    slack_signing_secret: str = ""
+    slack_app_token: str = ""
+
     # 화면 캡처 설정
     capture_fps: int = 10  # 초당 프레임 수
     capture_monitor: int = 1  # 캡처할 모니터 번호 (1-based)

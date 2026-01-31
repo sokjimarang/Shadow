@@ -25,7 +25,17 @@ dependencies = [
     # 패턴 분석
     "numpy>=2.0.0",
     "python-levenshtein>=0.26.0",
+
+    # Slack 연동
+    "slack-bolt>=1.18.0",
+
+    # macOS 활성 윈도우 (선택적 - macOS에서만 설치됨)
+    "pyobjc-framework-Cocoa>=10.0.0; sys_platform == 'darwin'",
+    "pyobjc-framework-Quartz>=10.0.0; sys_platform == 'darwin'",
 ]
+
+[project.scripts]
+shadow = "shadow.cli:main"
 
 [dependency-groups]
 dev = [
