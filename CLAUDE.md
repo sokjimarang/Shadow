@@ -42,9 +42,103 @@ shadow/
 
 Database 관련 참조가 필요할 때는 다음 파일을 참조합니다:
 
+- **Data Schema**: `docs/direction/data_schema.md` - 엔티티 정의 및 관계도
 - **Migration 파일**: `supabase/migrations/*.sql` - 실제 DB 스키마 정의
 - **Migration 가이드**: `docs/database/migration-guide.md` - 마이그레이션 관리 방법
 - **DB 관리 명령어**: `Makefile` - db-start, db-push 등 명령어 정의
+
+### Database Migration 규칙 (필수 준수)
+
+> ⚠️ **중요**: 신규 테이블 생성 또는 스키마 업데이트 시 반드시 아래 절차를 따를 것
+
+#### 1. Migration 파일 생성
+
+```bash
+# Makefile 명령어로 마이그레이션 생성
+make db-migration-new
+# 프롬프트에서 마이그레이션 이름 입력 (예: add_labeled_actions_table)
+```
+
+생성 위치: `supabase/migrations/YYYYMMDDHHMMSS_<name>.sql`
+
+#### 2. SQL 스키마 작성
+
+- **data_schema.md를 기준으로 작성** - 엔티티 정의와 일치해야 함
+- **UUID 함수**: `gen_random_uuid()` 사용 (PostgreSQL 13+)
+- **Timestamp**: `TIMESTAMPTZ` 타입 사용
+- **JSON 필드**: `JSONB` 타입 사용 (검색 가능)
+- **인덱스**: 자주 조회하는 컬럼에 생성
+
+예시:
+```sql
+-- LabeledAction 테이블 생성
+CREATE TABLE labeled_actions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  observation_id UUID REFERENCES observations(id) ON DELETE CASCADE,
+  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+  timestamp TIMESTAMPTZ NOT NULL,
+  action_type TEXT NOT NULL,
+  target_element TEXT NOT NULL,
+  app TEXT NOT NULL,
+  app_context TEXT,
+  semantic_label TEXT NOT NULL,
+  intent_guess TEXT,
+  confidence NUMERIC NOT NULL DEFAULT 1.0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 인덱스 생성
+CREATE INDEX labeled_actions_session_id_idx ON labeled_actions(session_id);
+CREATE INDEX labeled_actions_timestamp_idx ON labeled_actions(timestamp);
+```
+
+#### 3. 프로덕션 배포
+
+```bash
+# 프로덕션 DB에 마이그레이션 적용
+make db-push
+```
+
+#### 4. Git 커밋
+
+```bash
+# 마이그레이션 파일을 git에 커밋
+git add supabase/migrations/
+git commit -m "feat: add labeled_actions table migration"
+```
+
+#### 5. Repository 레이어 구현
+
+마이그레이션 배포 후 해당 테이블의 Repository 클래스 구현:
+- 위치: `shadow/api/repositories/<entity_name>.py`
+- 기존 패턴 참조: `shadow/api/repositories/sessions.py`
+- 에러 핸들링: `ShadowAPIError` + `ErrorCode` 사용
+
+#### Migration 체크리스트
+
+- [ ] `make db-migration-new`로 마이그레이션 파일 생성
+- [ ] `data_schema.md` 기준으로 SQL 작성
+- [ ] `gen_random_uuid()` 사용 (UUID 필드)
+- [ ] 필요한 인덱스 생성
+- [ ] `make db-push`로 프로덕션 배포
+- [ ] Migration 파일 git 커밋
+- [ ] Repository 클래스 구현
+- [ ] 통합 테스트 작성 (`tests/test_supabase_integration.py`)
+
+#### 트러블슈팅
+
+```bash
+# 마이그레이션 상태 확인
+make db-migration-list
+
+# 로컬-프로덕션 차이 확인
+make db-diff
+
+# 프로덕션 스키마 가져오기
+make db-pull
+```
+
+자세한 내용: `docs/database/migration-guide.md`
 
 ### 문서 폴더 구조
 
