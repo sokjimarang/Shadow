@@ -21,6 +21,7 @@ class ActionType(str, Enum):
     SCROLL = "scroll"
     NAVIGATE = "navigate"
     SELECT = "select"
+    DRAG = "drag"
 
 
 class SessionStatus(str, Enum):
@@ -85,6 +86,7 @@ class LabeledAction(BaseModel):
             "scroll": ActionType.SCROLL,
             "navigate": ActionType.NAVIGATE,
             "select": ActionType.SELECT,
+            "drag": ActionType.DRAG,
         }
         return action_type_map.get(self.action.lower(), ActionType.CLICK)
 
