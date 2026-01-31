@@ -110,10 +110,23 @@
 ### 데이터베이스 Migration 시스템
 - ✅ **Supabase CLI 환경 구축** (2026-01-31)
   - shadow-web에서 shadow-py로 migration 파일 이동 완료
-  - `supabase/migrations/` 폴더에 3개 migration 파일 관리
+  - `supabase/migrations/` 폴더에 **9개 migration 파일** 관리
+    - 기존 3개 (sessions, hitl_questions/answers, agent_specs/histories)
+    - 신규 6개 (raw data, analysis, pattern, hitl interpreted, system layers)
   - `Makefile`로 DB 관리 명령어 구축 (db-start, db-push, db-migration-new 등)
   - `docs/database/migration-guide.md` 작성 (Python 환경 가이드)
   - Supabase 프로덕션 DB 연결 완료 (project-ref: ddntzfdetgcobzohimvm)
+
+### Repository 레이어 구현
+- ✅ **데이터 접근 레이어 완성** (2026-01-31)
+  - **System Layer**: UserRepository, ConfigRepository ✅
+  - **Raw Data Layer**: ObservationRepository (기존) ✅
+  - **Analysis Layer**: LabeledActionRepository, SessionSequenceRepository ✅
+  - **Pattern Layer**: DetectedPatternRepository ✅
+  - **HITL Layer**: HITLRepository (기존), InterpretedAnswerRepository ✅
+  - **Spec Layer**: SpecRepository (기존) ✅
+  - 통합 테스트 작성 완료 (`tests/test_supabase_integration.py`)
+  - 총 9개 테이블에 대한 Repository 구현 완료
 
 ---
 
@@ -123,3 +136,4 @@
 |------|----------|
 | 2026-01-31 | 초기 구현 현황 문서 작성 |
 | 2026-01-31 | DB migration 시스템 구축 완료 (shadow-web → shadow-py 이동) |
+| 2026-01-31 | Repository 레이어 완성 (6개 신규 migration + 5개 신규 Repository 구현) |
