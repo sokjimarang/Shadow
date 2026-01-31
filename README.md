@@ -75,6 +75,7 @@ shadow/
 │   ├── screen.py      # mss 기반 스크린샷 캡처
 │   ├── input_events.py # pynput 기반 입력 이벤트 수집
 │   ├── recorder.py    # 통합 녹화기
+│   ├── window.py      # 활성 윈도우 감지
 │   └── models.py      # 데이터 모델
 ├── preprocessing/     # 전처리
 │   └── keyframe.py    # 키프레임 추출기
@@ -82,12 +83,44 @@ shadow/
 │   ├── base.py        # 분석기 베이스 클래스
 │   ├── claude.py      # Claude Opus 4.5 분석기
 │   ├── gemini.py      # Gemini 분석기
-│   └── prompts.py     # 프롬프트 템플릿
+│   ├── prompts.py     # 프롬프트 템플릿
+│   └── models.py      # LabeledAction, SessionSequence
 ├── patterns/          # 패턴 감지
 │   ├── detector.py    # 패턴 감지기
-│   └── similarity.py  # 유사도 계산
+│   ├── similarity.py  # 유사도 계산
+│   ├── uncertainties.py # Uncertainty (dataclass)
+│   └── models.py      # DetectedPattern, ActionTemplate, Variation
+├── hitl/              # Human-in-the-Loop
+│   └── models.py      # HITLQuestion, HITLAnswer, InterpretedAnswer
+├── spec/              # 자동화 명세서
+│   └── models.py      # AgentSpec, SpecHistory
+├── core/              # 시스템 레이어
+│   └── models.py      # Session, User, Config
 └── config.py          # 설정 관리
 ```
+
+### 주요 클래스
+
+| 클래스 | 위치 | 역할 |
+|--------|------|------|
+| `Recorder` | capture/recorder.py | 화면+입력 통합 녹화 |
+| `KeyframeExtractor` | preprocessing/keyframe.py | 클릭 시점 프레임 추출 |
+| `ClaudeAnalyzer` | analysis/claude.py | Claude Vision 분석 |
+| `GeminiAnalyzer` | analysis/gemini.py | Gemini Vision 분석 |
+| `PatternDetector` | patterns/detector.py | 반복 패턴 감지 |
+
+### 데이터 모델 (Pydantic v2)
+
+모든 데이터 모델은 **Pydantic v2** 기반으로 통합되었습니다.
+
+| Layer | 모델 | 설명 |
+|-------|------|------|
+| Raw Data | `Screenshot`, `InputEventRecord`, `RawObservation` | 화면 캡처 + 입력 이벤트 |
+| Analysis | `LabeledAction`, `SessionSequence` | VLM 분석 결과 |
+| Pattern | `DetectedPattern`, `Uncertainty`, `ActionTemplate` | 반복 패턴 |
+| HITL | `Question`, `Response` | 사용자 확인 |
+| Spec | `Spec`, `AgentSpec`, `SpecHistory` | 자동화 명세서 |
+| System | `Session`, `User`, `Config` | 시스템 설정 |
 
 ## 비용 최적화
 
