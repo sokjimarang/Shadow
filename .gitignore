@@ -42,9 +42,10 @@ Thumbs.db
 # Project specific
 *.log
 recordings/
+outputs/
 .serena
 .ralph
-/outputs/mock_e2e_spec.json
+!/outputs/mock_e2e_spec.json
 
 # Supabase
 supabase/.temp/
