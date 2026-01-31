@@ -105,8 +105,21 @@
 
 ---
 
+## 인프라 구축 현황
+
+### 데이터베이스 Migration 시스템
+- ✅ **Supabase CLI 환경 구축** (2026-01-31)
+  - shadow-web에서 shadow-py로 migration 파일 이동 완료
+  - `supabase/migrations/` 폴더에 3개 migration 파일 관리
+  - `Makefile`로 DB 관리 명령어 구축 (db-start, db-push, db-migration-new 등)
+  - `docs/database/migration-guide.md` 작성 (Python 환경 가이드)
+  - Supabase 프로덕션 DB 연결 완료 (project-ref: ddntzfdetgcobzohimvm)
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 내용 |
 |------|----------|
 | 2026-01-31 | 초기 구현 현황 문서 작성 |
+| 2026-01-31 | DB migration 시스템 구축 완료 (shadow-web → shadow-py 이동) |
