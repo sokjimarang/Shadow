@@ -21,7 +21,7 @@ def create_analyzer(
     """분석기 팩토리 함수
 
     Args:
-        backend: 사용할 백엔드 (claude, qwen_local)
+        backend: 사용할 백엔드
         **kwargs: 백엔드별 추가 인자
 
     Returns:
@@ -36,8 +36,6 @@ def create_analyzer(
 
     if backend == AnalyzerBackend.CLAUDE:
         return ClaudeAnalyzer(**kwargs)
-    elif backend == AnalyzerBackend.QWEN_LOCAL:
-        raise NotImplementedError("Qwen 로컬 백엔드는 아직 구현되지 않았습니다.")
     else:
         raise ValueError(f"지원하지 않는 백엔드: {backend}")
 

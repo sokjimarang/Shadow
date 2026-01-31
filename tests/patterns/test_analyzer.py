@@ -238,65 +238,6 @@ class TestPatternAnalyzerBackend:
         assert analyzer.model_name == "claude-3-5-sonnet-20241022"
 
 
-class TestMockPatternAnalyzer:
-    """Mock 패턴 분석기 테스트"""
-
-    @pytest.mark.asyncio
-    async def test_mock_pattern_analyzer_returns_patterns(self):
-        """Mock 분석기가 패턴을 반환하는지 확인"""
-        # Given
-        from shadow.pipeline.mocks import MockPatternAnalyzer
-
-        analyzer = MockPatternAnalyzer()
-        actions = _create_sample_actions(6)
-
-        # When
-        result = await analyzer.detect_patterns(actions)
-
-        # Then
-        assert len(result) >= 1
-        assert all(isinstance(p, DetectedPattern) for p in result)
-
-    @pytest.mark.asyncio
-    async def test_mock_pattern_analyzer_has_uncertainties(self):
-        """Mock 분석기가 불확실성을 포함하는지 확인"""
-        # Given
-        from shadow.pipeline.mocks import MockPatternAnalyzer
-
-        analyzer = MockPatternAnalyzer()
-        actions = _create_sample_actions(6)
-
-        # When
-        result = await analyzer.detect_patterns(actions)
-
-        # Then
-        assert len(result) >= 1
-        assert len(result[0].uncertainties) >= 1
-        assert all(isinstance(u, Uncertainty) for u in result[0].uncertainties)
-
-    @pytest.mark.asyncio
-    async def test_mock_pattern_analyzer_with_custom_patterns(self):
-        """커스텀 패턴으로 Mock 분석기 테스트"""
-        # Given
-        from shadow.pipeline.mocks import MockPatternAnalyzer
-
-        custom_patterns = [
-            DetectedPattern(
-                name="커스텀 패턴",
-                occurrence_indices=[0, 1],
-            )
-        ]
-        analyzer = MockPatternAnalyzer(patterns=custom_patterns)
-        actions = _create_sample_actions(3)
-
-        # When
-        result = await analyzer.detect_patterns(actions)
-
-        # Then
-        assert len(result) == 1
-        assert result[0].name == "커스텀 패턴"
-
-
 class TestCreatePatternAnalyzer:
     """팩토리 함수 테스트"""
 

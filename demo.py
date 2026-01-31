@@ -3,7 +3,6 @@
 
 사용법:
     python demo.py --record 10    # 10초 녹화 (Claude 사용)
-    python demo.py --test         # API 없이 테스트 (더미 데이터)
 """
 
 import argparse
@@ -126,48 +125,6 @@ async def record_and_analyze(duration: float, backend: str) -> None:
         print(f"패턴 감지 오류: {e}")
 
 
-def test_without_api() -> None:
-    """API 없이 패턴 감지 테스트 (Mock 사용)"""
-    from shadow.pipeline.mocks import MockPatternAnalyzer
-
-    print_header("패턴 감지 테스트 (Mock)")
-
-    # 테스트용 더미 액션 (PRD: 3회 반복 필요)
-    actions = [
-        # 1회차
-        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
-        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
-        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
-        # 2회차
-        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
-        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
-        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
-        # 3회차
-        LabeledAction(action="click", target="새로고침 버튼", context="Chrome", description="페이지 새로고침"),
-        LabeledAction(action="click", target="검색창", context="Chrome", description="검색창 클릭"),
-        LabeledAction(action="type", target="검색어", context="Chrome", description="검색어 입력"),
-    ]
-
-    print("테스트 액션 시퀀스:")
-    for i, action in enumerate(actions, 1):
-        print(f"  {i}. {action}")
-
-    # Mock 패턴 분석기로 패턴 감지
-    analyzer = MockPatternAnalyzer()
-    patterns = asyncio.run(analyzer.detect_patterns(actions))
-
-    print_header("감지된 패턴")
-    print_patterns(patterns)
-
-    # 불확실성 출력
-    for pattern in patterns:
-        if pattern.uncertainties:
-            print(f"\n  불확실 지점 ({len(pattern.uncertainties)}개):")
-            for u in pattern.uncertainties:
-                type_str = u.type.value if hasattr(u.type, "value") else u.type
-                print(f"    - [{type_str}] {u.hypothesis or u.description}")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Shadow: 화면 녹화 + 입력 분석 → 반복 패턴 감지"
@@ -185,17 +142,10 @@ def main() -> None:
         default="claude",
         help="사용할 Vision AI 백엔드 (기본: claude)",
     )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="API 없이 테스트 모드 실행",
-    )
 
     args = parser.parse_args()
 
-    if args.test:
-        test_without_api()
-    elif args.record:
+    if args.record:
         asyncio.run(record_and_analyze(args.record, args.backend))
     else:
         parser.print_help()

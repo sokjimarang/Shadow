@@ -287,16 +287,12 @@ Shadow는 세 가지 주요 컴포넌트로 구성된다.
 | 화면 캡처 | mss | Python 라이브러리 |
 | 입력 로깅 | pynput | 마우스/키보드 이벤트 |
 | Vision LLM | Claude Opus 4.5 | Primary |
-| Vision LLM | NVIDIA NIM (Qwen 3 VL) | Alternative |
 | Slack 연동 | Slack Bolt | Python SDK |
 | Web UI | Streamlit | 빠른 프로토타이핑 |
 
 ### 4.3 모델 교체 가능 설계
 
-Vision LLM은 추상화 레이어를 통해 교체 가능하도록 설계한다.
-
-- Primary: Claude Opus 4.5
-- Alternative: NVIDIA NIM (Qwen 3 VL)
+Vision LLM은 Claude Opus 4.5를 사용한다.
 
 ---
 

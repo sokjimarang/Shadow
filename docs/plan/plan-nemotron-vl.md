@@ -55,7 +55,6 @@ nemotron_max_image_size: int = 1024
 class AnalyzerBackend(Enum):
     CLAUDE = "claude"
     NEMOTRON = "nemotron"  # 추가
-    QWEN_LOCAL = "qwen_local"
 ```
 
 ### 4. NemotronAnalyzer 구현 (`shadow/analysis/nemotron.py`)

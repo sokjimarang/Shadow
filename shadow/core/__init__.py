@@ -1,8 +1,8 @@
 """Core 모듈
 
-시스템 레벨 모델들을 정의합니다.
+데이터베이스 연결 등 핵심 기능을 제공합니다.
 """
 
-from shadow.core.models import Config, Session, SessionStatus, User
+from shadow.core.database import Database, get_db
 
-__all__ = ["Session", "SessionStatus", "User", "Config"]
+__all__ = ["Database", "get_db"]

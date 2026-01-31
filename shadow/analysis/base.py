@@ -5,6 +5,7 @@ LLM 모델을 쉽게 교체할 수 있도록 인터페이스를 정의합니다.
 
 import io
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from PIL import Image
 
@@ -16,7 +17,6 @@ class AnalyzerBackend(Enum):
     """지원하는 분석기 백엔드"""
 
     CLAUDE = "claude"
-    QWEN_LOCAL = "qwen_local"  # Ollama 등 로컬 실행
 
 
 class BaseVisionAnalyzer(ABC):
