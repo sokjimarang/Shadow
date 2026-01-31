@@ -3,6 +3,7 @@
 패턴 불확실성에서 질문을 생성하고 사용자 응답을 처리합니다.
 """
 
+from shadow.hitl.generator import QuestionGenerator
 from shadow.hitl.models import (
     InterpretedAction,
     InterpretedAnswer,
@@ -25,4 +26,5 @@ __all__ = [
     "InterpretedAnswer",
     "InterpretedAction",
     "SpecUpdate",
+    "QuestionGenerator",
 ]

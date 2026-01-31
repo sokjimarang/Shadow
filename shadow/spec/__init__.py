@@ -3,6 +3,7 @@
 패턴과 HITL 응답을 기반으로 자동화 명세서를 생성합니다.
 """
 
+from shadow.spec.builder import SpecBuilder, SpecStorage
 from shadow.spec.models import (
     # Dataclass 모델 (내부 처리용)
     DecisionRule,
@@ -31,4 +32,7 @@ __all__ = [
     "SpecChange",
     "ChangeType",
     "ChangeSource",
+    # 빌더
+    "SpecBuilder",
+    "SpecStorage",
 ]
