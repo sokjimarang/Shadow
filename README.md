@@ -152,6 +152,35 @@ make dev
 
 자세한 API 테스트는 `test_main.http` 파일 참조
 
+### CLI 명령어
+
+```bash
+# 기본: 30초 녹화
+uv run shadow start
+
+# 10초 녹화
+uv run shadow start --sec 10
+
+# 10분 녹화
+uv run shadow start --min 10
+
+# Gemini로 3분 녹화
+uv run shadow start --min 3 --backend gemini
+
+# 도움말
+uv run shadow --help
+```
+
+**참고사항**
+
+현재 `uv run shadow` 형태로 실행됩니다. `shadow` 명령만으로 실행하려면 추가 설치가 필요합니다:
+
+```bash
+# pipx로 전역 설치 (선택사항)
+pipx install -e .
+shadow start
+```
+
 ### CLI 데모
 
 ```bash
