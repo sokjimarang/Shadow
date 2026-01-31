@@ -68,6 +68,10 @@ make db-migration-new
 - **Timestamp**: `TIMESTAMPTZ` 타입 사용
 - **JSON 필드**: `JSONB` 타입 사용 (검색 가능)
 - **인덱스**: 자주 조회하는 컬럼에 생성
+- **⚠️ 인코딩 규칙**:
+  - **주석은 영문만 사용** (한글 주석 금지 - UTF-8 인코딩 이슈 방지)
+  - Migration 파일 작성 시 `cat > file.sql << 'EOF'` 방식 권장 (Write 도구 대신)
+  - 파일 인코딩: UTF-8 without BOM
 
 예시:
 ```sql
