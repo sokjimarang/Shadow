@@ -62,17 +62,20 @@ class AnalyzerProtocol(Protocol):
 
 
 @runtime_checkable
-class PatternDetectorProtocol(Protocol):
-    """패턴 감지기 프로토콜"""
+class PatternAnalyzerProtocol(Protocol):
+    """패턴 분석기 프로토콜 (LLM 기반)"""
 
-    def detect(self, actions: list[LabeledAction]) -> list[DetectedPattern]:
-        """액션 시퀀스에서 반복 패턴 감지
+    async def detect_patterns(
+        self,
+        actions: list[LabeledAction],
+    ) -> list[DetectedPattern]:
+        """액션 시퀀스에서 패턴 감지 + 불확실성 추출
 
         Args:
-            actions: 분석할 액션 시퀀스
+            actions: VLM 분석된 액션 시퀀스
 
         Returns:
-            감지된 패턴 목록
+            감지된 패턴 목록 (uncertainties 포함)
         """
         ...
 
