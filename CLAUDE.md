@@ -167,20 +167,15 @@ docs/
 - `docs/direction/main_service-plan-v1.2.md`
 - `docs/direction/prd.md`
 
-#### scenario (유저 시나리오)
-- `docs/scenario/scenario-01-pm-slack-response.md`
-- `docs/scenario/scenario-02-hr-form-management.md`
-- `docs/scenario/scenario-03-marketer-ads-automation.md`
-
 #### plan (계획안)
+- `docs/plan/plan-client-server-separation.md`
 - `docs/plan/plan-nemotron-vl.md`
+- `docs/plan/plan-replit-deployment.md`
 
 #### report (리포트)
+- `docs/report/batch-analysis-observations.md`
 - `docs/report/implementation_status.md`
 - `docs/report/p0_gap_report.md`
-
-#### database (데이터베이스)
-- `docs/database/migration-guide.md`
 <!-- DOCS_LIST_END -->
 
 ### 기능 구현 시 참조 문서

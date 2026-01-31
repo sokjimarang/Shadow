@@ -92,7 +92,7 @@ CREATE TABLE analysis_results (
 );
 ```
 
-**용도**: Claude/Gemini가 분석한 사용자 행동 저장
+**용도**: Claude가 분석한 사용자 행동 저장
 
 ### 3. `patterns` - 감지된 패턴
 
