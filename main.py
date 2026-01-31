@@ -20,6 +20,8 @@ from pydantic import BaseModel, Field
 from shadow.analysis.models import LabeledAction
 from shadow.analysis.claude import ClaudeAnalyzer
 from shadow.analysis.gemini import GeminiAnalyzer
+from shadow.api.errors import ShadowAPIError, general_exception_handler, shadow_api_error_handler
+from shadow.api.routers import agent_router, hitl_router, specs_router
 from shadow.capture.recorder import Recorder, RecordingSession
 from shadow.config import settings
 from shadow.patterns.detector import PatternDetector
@@ -59,6 +61,15 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# === 에러 핸들러 등록 ===
+app.add_exception_handler(ShadowAPIError, shadow_api_error_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
+# === API 라우터 등록 ===
+app.include_router(agent_router)  # /api/v1/*
+app.include_router(hitl_router)  # /api/hitl/*
+app.include_router(specs_router)  # /api/specs/*
 
 
 # === 요청/응답 모델 ===
