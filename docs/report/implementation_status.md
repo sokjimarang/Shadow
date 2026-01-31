@@ -21,7 +21,7 @@
 |----|------|------|------|------|
 | F-01 | 화면 캡처 | ✅ 완료 | `shadow/capture/screen.py`, `recorder.py` | MSS 기반 Before/After 캡처 |
 | F-02 | 마우스 이벤트 캡처 | ✅ 완료 | `shadow/capture/input_events.py` | pynput 기반, 클릭/스크롤 수집 |
-| F-03 | 활성 윈도우 정보 | ✅ 완료 | `shadow/capture/window.py` | macOS PyObjC 사용 |
+| F-03 | 활성 윈도우 정보 | ✅ 완료 | `shadow/capture/window.py` | macOS PyObjC 사용 (macOS 전용) |
 | F-04 | 행동 라벨링 (VLM) | ✅ 완료 | `shadow/analysis/claude.py`, `gemini.py` | Before/After 비교 분석 |
 | F-05 | 패턴 감지 (LLM) | ⚠️ 부분 | `shadow/patterns/detector.py` | 규칙 기반만 구현, LLM 기반 미구현 |
 | F-06 | HITL 질문 생성 | ✅ 완료 | `shadow/hitl/generator.py` | 가설검증/품질확인 질문 |
@@ -53,7 +53,7 @@
 ### capture/ (화면 캡처)
 - `screen.py`: MSS 기반 화면 캡처 ✅
 - `input_events.py`: pynput 마우스/키보드 이벤트 ✅
-- `window.py`: macOS 활성 윈도우 정보 ✅
+- `window.py`: macOS 활성 윈도우 정보 ✅ (macOS 전용)
 - `recorder.py`: 캡처 + 이벤트 동기화 ✅
 - `storage.py`: 세션 저장 ✅
 - `models.py`: Frame, InputEvent, KeyframePair ✅

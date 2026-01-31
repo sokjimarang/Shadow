@@ -140,7 +140,7 @@ SLACK_APP_TOKEN=xapp-...
 
 - [x] F-01: 화면 캡처 (mss)
 - [x] F-02: 마우스 이벤트 캡처 (pynput)
-- [x] F-03: 활성 윈도우 정보 (PyObjC + AppKit)
+- [x] F-03: 활성 윈도우 정보 (PyObjC + AppKit, macOS 전용)
 - [ ] F-04: 행동 라벨링 (VLM)
 - [ ] F-05: 패턴 감지 (LLM)
 - [ ] F-06: HITL 질문 생성
