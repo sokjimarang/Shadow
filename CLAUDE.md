@@ -170,6 +170,7 @@ docs/
 - `docs/direction/data_schema.md`
 - `docs/direction/main_service-plan-v1.2.md`
 - `docs/direction/prd.md`
+- `docs/direction/stack-architecture.md`
 
 #### plan (계획안)
 - `docs/plan/plan-client-server-separation.md`
