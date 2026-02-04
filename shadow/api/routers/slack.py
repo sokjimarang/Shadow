@@ -60,14 +60,29 @@ async def receive_slack_event(
     # 요청 body 읽기
     body_bytes = await request.body()
 
-    # 1. Timestamp 검증 (Replay attack 방지)
+    # 1. JSON 파싱 (url_verification 먼저 체크하기 위해)
+    try:
+        payload = json.loads(body_bytes)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON",
+        )
+
+    # 2. URL Verification (Slack 앱 설정 시 최초 1회)
+    # Signature 검증 전에 처리해야 함
+    event_type = payload.get("type")
+    if event_type == "url_verification":
+        return URLVerificationResponse(challenge=payload["challenge"])
+
+    # 3. Timestamp 검증 (Replay attack 방지)
     if is_request_expired(x_slack_request_timestamp):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Request timestamp expired",
         )
 
-    # 2. Signature 검증
+    # 4. Signature 검증
     if not settings.slack_signing_secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -85,21 +100,7 @@ async def receive_slack_event(
             detail="Invalid signature",
         )
 
-    # 3. JSON 파싱
-    try:
-        payload = json.loads(body_bytes)
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid JSON",
-        )
-
-    # 4. 이벤트 타입별 처리
-    event_type = payload.get("type")
-
-    # URL Verification (Slack 앱 설정 시 최초 1회)
-    if event_type == "url_verification":
-        return URLVerificationResponse(challenge=payload["challenge"])
+    # 5. 이벤트 타입별 처리
 
     # Event Callback (실제 이벤트)
     if event_type == "event_callback":
@@ -171,14 +172,25 @@ async def receive_slack_interactivity(
     # 요청 body 읽기
     body_bytes = await request.body()
 
-    # 1. Timestamp 검증
+    # 1. Form 데이터 파싱 먼저 시도 (URL 검증 테스트 대응)
+    from urllib.parse import parse_qs
+
+    form_str = body_bytes.decode("utf-8")
+    form_dict = parse_qs(form_str)
+
+    # payload가 없으면 URL 검증 테스트일 수 있음 (200 OK 반환)
+    payload_list = form_dict.get("payload")
+    if not payload_list:
+        return SlackEventResponse(ok=True)
+
+    # 2. Timestamp 검증
     if is_request_expired(x_slack_request_timestamp):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Request timestamp expired",
         )
 
-    # 2. Signature 검증
+    # 3. Signature 검증
     if not settings.slack_signing_secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -196,21 +208,7 @@ async def receive_slack_interactivity(
             detail="Invalid signature",
         )
 
-    # 3. Form 데이터 파싱 (Slack은 application/x-www-form-urlencoded로 전송)
-    # Request.form()은 multipart만 지원하므로 body를 직접 파싱
-    from urllib.parse import parse_qs
-
-    form_str = body_bytes.decode("utf-8")
-    form_dict = parse_qs(form_str)
-
-    # payload는 단일 값이므로 리스트의 첫 번째 요소를 가져옴
-    payload_list = form_dict.get("payload")
-    if not payload_list:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing payload",
-        )
-
+    # 4. Payload JSON 파싱
     payload_str = payload_list[0]
 
     try:
@@ -221,7 +219,7 @@ async def receive_slack_interactivity(
             detail="Invalid JSON in payload",
         )
 
-    # 4. Interaction 타입별 처리
+    # 5. Interaction 타입별 처리
     interaction_type = payload.get("type")
 
     if interaction_type == "block_actions":
@@ -280,11 +278,55 @@ async def _handle_block_actions(payload: dict[str, Any]) -> None:
     user_id = user.get("id")
     message = payload.get("message", {})
     message_ts = message.get("ts")
+    channel = payload.get("container", {}).get("channel_id")
 
     print(f"[Slack Block Action] Question: {question_id}, Option: {option_id}, User: {user_id}")
+
+    # 선택한 옵션 텍스트 찾기
+    selected_text = action.get("text", {}).get("text", option_id)
+
+    # Slack 메시지 업데이트 (버튼 제거 + 응답 확인 메시지)
+    if channel and message_ts:
+        from shadow.slack.client import SlackClient
+
+        slack_client = SlackClient()
+        if slack_client.is_configured:
+            # 업데이트할 블록 (버튼 제거, 응답 표시)
+            updated_blocks = [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "✅ 응답이 제출되었습니다",
+                        "emoji": True,
+                    },
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*선택하신 답변:* {selected_text}",
+                    },
+                },
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"응답자: <@{user_id}>",
+                        }
+                    ],
+                },
+            ]
+
+            slack_client.update_message(
+                channel=channel,
+                ts=message_ts,
+                text="응답이 제출되었습니다",
+                blocks=updated_blocks,
+            )
 
     # TODO: Phase 5에서 실제 비즈니스 로직 구현
     # - HITLRepository.create_answer()
     # - interpret_answer() 호출
     # - update_spec() 호출
-    # - Slack 메시지 업데이트

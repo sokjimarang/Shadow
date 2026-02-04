@@ -73,12 +73,13 @@ class SlackClient:
         blocks = []
 
         # 헤더
+        question_type = question.type.value if hasattr(question.type, 'value') else question.type
         blocks.append(
             {
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"🤔 {question.type.value.upper()} 질문",
+                    "text": f"🤔 {question_type.upper()} 질문",
                     "emoji": True,
                 },
             }

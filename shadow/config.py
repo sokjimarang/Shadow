@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     slack_bot_token: str = ""
     slack_signing_secret: str = ""
     slack_app_token: str = ""
+    slack_default_channel: str = ""  # 기본 Slack 채널 ID
 
     # 화면 캡처 설정
     capture_fps: int = 10  # 초당 프레임 수
