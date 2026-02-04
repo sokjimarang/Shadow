@@ -1,0 +1,26 @@
+graph TB
+    subgraph Problems["❌ 현재 구조의 문제점"]
+        subgraph ShadowPy["shadow-py (FastAPI)"]
+            MainPy["main.py<br/>(클라이언트+서버 혼재)"]
+            Recorder["Recorder<br/>(mss, pynput, PyObjC)<br/>❌ OS 의존적"]
+            Analysis["Analysis<br/>(Claude Vision AI)<br/>✅ 서버 로직"]
+            Patterns["Pattern Detector<br/>✅ 서버 로직"]
+
+            MainPy --> Recorder
+            MainPy --> Analysis
+            MainPy --> Patterns
+        end
+
+        Problem1["⚠️ 클라우드 배포 불가<br/>(OS 의존성)"]
+        Problem2["⚠️ 역할 불명확<br/>(녹화 vs API)"]
+        Problem3["⚠️ 의존성 비대화<br/>(100MB+ 패키지)"]
+
+        Recorder -.->|원인| Problem1
+        MainPy -.->|원인| Problem2
+        Recorder -.->|원인| Problem3
+    end
+
+    style Recorder fill:#ff9999,stroke:#cc0000,color:#000,stroke-width:3px
+    style Problem1 fill:#ffcccc,stroke:#cc0000,color:#000
+    style Problem2 fill:#ffcccc,stroke:#cc0000,color:#000
+    style Problem3 fill:#ffcccc,stroke:#cc0000,color:#000

@@ -1,0 +1,75 @@
+graph TB
+    subgraph Desktop["💻 Desktop App (Tauri + shadow-web)"]
+        _d1[" "]
+
+        NextJS["Next.js UI<br/>(기존 shadow-web)"]
+        TauriCore["Tauri Core (Rust)"]
+        ScreenCap["Screen Capture<br/>Native APIs"]
+        InputTrack["Input Tracking"]
+        FileSystem["File System"]
+
+        _d1 ~~~ NextJS
+        NextJS --> TauriCore
+        TauriCore --> ScreenCap
+        TauriCore --> InputTrack
+        TauriCore --> FileSystem
+    end
+
+    subgraph Cloud["☁️ Cloud Backend (Vercel)"]
+        _c1[" "]
+
+        API["FastAPI<br/>/api/v1/*"]
+        VisionAI["Vision AI<br/>Claude Opus 4.5"]
+        PatternEngine["Pattern Detection<br/>LLM-based"]
+        HITLGen["HITL Generator"]
+        SpecBuilder["Spec Builder"]
+
+        _c1 ~~~ API
+        API --> VisionAI
+        VisionAI --> PatternEngine
+        PatternEngine --> HITLGen
+        HITLGen --> SpecBuilder
+    end
+
+    subgraph Data["🗄️ Supabase"]
+        _s1[" "]
+
+        DB[("PostgreSQL<br/>sessions<br/>patterns<br/>specs")]
+        Storage[("Object Storage<br/>Screenshots<br/>Videos")]
+
+        _s1 ~~~ DB
+    end
+
+    subgraph Integration["💬 Integrations"]
+        _i1[" "]
+
+        SlackBot["Slack Bot<br/>HITL Questions"]
+        WebUI["Web Dashboard<br/>shadow-web"]
+
+        _i1 ~~~ SlackBot
+    end
+
+    ScreenCap -->|1. 녹화 데이터| FileSystem
+    FileSystem -->|2. 업로드| Storage
+    NextJS -->|3. POST /observations| API
+    Storage -->|4. 이미지 URL| API
+    API -->|5. 분석 결과| DB
+    PatternEngine -->|6. 패턴 감지| DB
+    HITLGen -->|7. 질문 전송| SlackBot
+    SlackBot -.->|8. 사용자 응답| API
+    API -->|9. 응답 저장| DB
+    SpecBuilder -->|10. 명세서 생성| DB
+    DB -.->|11. 조회| WebUI
+    DB -.->|12. 조회| NextJS
+
+    style NextJS fill:#61dafb,stroke:#20232a,stroke-width:2px,color:#000
+    style TauriCore fill:#ffc131,stroke:#24c8db,stroke-width:2px,color:#000
+    style API fill:#009688,stroke:#00796b,stroke-width:2px
+    style DB fill:#3ecf8e,stroke:#2aa876,stroke-width:2px,color:#000
+    style Storage fill:#3ecf8e,stroke:#2aa876,stroke-width:2px,color:#000
+    style SlackBot fill:#4a154b,stroke:#611f69,stroke-width:2px
+
+    style _d1 fill:none,stroke:none,color:transparent
+    style _c1 fill:none,stroke:none,color:transparent
+    style _s1 fill:none,stroke:none,color:transparent
+    style _i1 fill:none,stroke:none,color:transparent

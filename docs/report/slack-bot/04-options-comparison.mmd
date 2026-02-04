@@ -1,0 +1,74 @@
+graph TB
+    subgraph Option1["🎯 Option 1: Tauri Desktop App (추천)"]
+        T1[shadow-web<br/>Next.js]
+        T2[Tauri Shell<br/>Rust + WebView]
+        T3[Screen Recording<br/>Native APIs]
+        T4[FastAPI Backend<br/>Vercel]
+        T5[Supabase<br/>DB + Storage]
+
+        T1 --> T2
+        T2 --> T3
+        T1 -->|HTTPS API| T4
+        T4 --> T5
+    end
+
+    subgraph Option2["⚡ Option 2: Electron + Next.js"]
+        E1[shadow-web<br/>Next.js]
+        E2[Electron Shell<br/>Chromium + Node.js]
+        E3[Screen Recording<br/>desktopCapturer]
+        E4[FastAPI Backend<br/>Vercel]
+
+        E1 --> E2
+        E2 --> E3
+        E1 --> E4
+    end
+
+    subgraph Option3["🌐 Option 3: Chrome Extension"]
+        C1[Chrome Extension]
+        C2[chrome.tabCapture API]
+        C3[shadow-web<br/>Web App]
+        C4[FastAPI Backend<br/>Vercel]
+
+        C1 --> C2
+        C2 --> C3
+        C3 --> C4
+    end
+
+    subgraph Option4["🛠️ Option 4: CLI Client"]
+        CLI1[shadow-client<br/>Python CLI]
+        CLI2[Recorder<br/>mss, pynput]
+        CLI3[FastAPI Backend<br/>Vercel]
+
+        CLI1 --> CLI2
+        CLI1 --> CLI3
+    end
+
+    Pros1["✅ 경량 ~10MB<br/>✅ 보안 강화<br/>✅ 웹 UI 재사용<br/>✅ 성능 우수"]
+    Cons1["⚠️ Rust 학습<br/>⚠️ 구축 시간"]
+
+    Pros2["✅ 성숙한 생태계<br/>✅ Node.js 통합<br/>✅ 풍부한 플러그인"]
+    Cons2["⚠️ 무거움 ~150MB<br/>⚠️ 메모리 높음<br/>⚠️ 보안 복잡"]
+
+    Pros3["✅ 가장 가벼움<br/>✅ 설치 불필요<br/>✅ 크로스 플랫폼"]
+    Cons3["⚠️ 브라우저 제약<br/>⚠️ 권한 제한<br/>⚠️ 전체 화면 불가"]
+
+    Pros4["✅ 빠른 구현<br/>✅ 코드 재사용<br/>✅ 개발자 친화"]
+    Cons4["⚠️ CLI 제한<br/>⚠️ UI 없음<br/>⚠️ 진입장벽"]
+
+    Option1 -.-> Pros1
+    Option1 -.-> Cons1
+    Option2 -.-> Pros2
+    Option2 -.-> Cons2
+    Option3 -.-> Pros3
+    Option3 -.-> Cons3
+    Option4 -.-> Pros4
+    Option4 -.-> Cons4
+
+    style Pros1 fill:#ccffcc,stroke:#00cc00,color:#000
+    style Pros2 fill:#ccffcc,stroke:#00cc00,color:#000
+    style Pros3 fill:#ccffcc,stroke:#00cc00,color:#000
+    style Pros4 fill:#ccffcc,stroke:#00cc00,color:#000
+    style Cons1 fill:#ffffcc,stroke:#ffaa00,color:#000
+    style Cons2 fill:#ffffcc,stroke:#ffaa00,color:#000
+    style Cons3 fill:#ffffcc,stroke:#ffaa00,color:#000
+    style Cons4 fill:#ffffcc,stroke:#ffaa00,color:#000

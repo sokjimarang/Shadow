@@ -1,0 +1,32 @@
+gantt
+    title 🚀 Tauri Desktop App 구현 로드맵
+    dateFormat YYYY-MM-DD
+    section Phase 1: 준비
+    Tauri 환경 설정          :p1_1, 2026-02-05, 1d
+    shadow-web Tauri 통합    :p1_2, after p1_1, 1d
+    Rust Commands 스캐폴딩    :p1_3, after p1_2, 1d
+
+    section Phase 2: 녹화 기능
+    화면 캡처 구현 (Rust)    :p2_1, after p1_3, 2d
+    입력 이벤트 수집         :p2_2, after p2_1, 1d
+    키프레임 추출 로직       :p2_3, after p2_2, 1d
+
+    section Phase 3: 서버 통합
+    Supabase Storage 업로드  :p3_1, after p2_3, 1d
+    FastAPI 엔드포인트 호출  :p3_2, after p3_1, 1d
+    에러 핸들링 및 재시도    :p3_3, after p3_2, 1d
+
+    section Phase 4: UI 구현
+    녹화 컨트롤 UI          :p4_1, after p3_3, 2d
+    세션 목록 뷰            :p4_2, after p4_1, 1d
+    패턴 결과 뷰            :p4_3, after p4_2, 1d
+
+    section Phase 5: 테스트 배포
+    E2E 테스트              :p5_1, after p4_3, 2d
+    빌드 파이프라인         :p5_2, after p5_1, 1d
+    macOS Windows 배포      :p5_3, after p5_2, 1d
+
+    section Milestone
+    ✅ 프로토타입 완성       :milestone, after p2_3, 0d
+    ✅ 베타 릴리즈           :milestone, after p4_3, 0d
+    ✅ 1.0 릴리즈            :milestone, after p5_3, 0d

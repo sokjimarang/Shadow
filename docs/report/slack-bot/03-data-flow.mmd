@@ -1,0 +1,57 @@
+sequenceDiagram
+    participant User as 👤 사용자
+    participant Desktop as 💻 Tauri Desktop
+    participant Storage as 🗄️ Storage
+    participant API as ☁️ FastAPI
+    participant DB as 🗄️ PostgreSQL
+    participant Slack as 💬 Slack
+
+    User->>Desktop: 녹화 시작 (30초)
+    activate Desktop
+    Desktop->>Desktop: 화면 캡처<br/>(Native APIs)
+    Desktop->>Desktop: 입력 이벤트 수집
+    Note over Desktop: 30초 동안 녹화...
+    Desktop->>Desktop: 키프레임 추출
+    deactivate Desktop
+
+    loop 각 키프레임 쌍
+        Desktop->>Storage: 이미지 업로드
+        Storage-->>Desktop: Public URL
+        Desktop->>API: POST /observations
+        API->>DB: INSERT observation
+        API-->>Desktop: processed: true
+    end
+
+    Desktop->>API: POST /control (stop)
+
+    Note over API: 백그라운드 분석 시작
+
+    loop 각 observation
+        API->>Storage: 이미지 다운로드
+        Storage-->>API: Image bytes
+        API->>API: Claude Vision AI 분석
+        API->>DB: INSERT labeled_action
+    end
+
+    API->>API: 패턴 감지 (LLM)
+    API->>DB: INSERT patterns
+
+    API->>API: HITL 질문 생성
+    API->>Slack: Block Kit UI 전송
+    Slack-->>User: 🤔 질문 도착
+
+    User->>Slack: 버튼 클릭
+    Slack->>API: Webhook
+    API->>DB: INSERT answers
+
+    API->>API: 명세서 생성
+    API->>DB: INSERT specs
+    API->>Slack: ✅ 완료 알림
+
+    Slack-->>User: 명세서 완성!
+    User->>Desktop: 결과 조회
+    Desktop->>API: GET /specs/{id}
+    API->>DB: SELECT spec
+    DB-->>API: Spec data
+    API-->>Desktop: AgentSpec JSON
+    Desktop-->>User: UI에 표시

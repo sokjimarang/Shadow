@@ -174,15 +174,25 @@ docs/
 
 #### plan (계획안)
 - `docs/plan/plan-client-server-separation.md`
-- `docs/plan/plan-flet-desktop-app.md`
 - `docs/plan/plan-nemotron-vl.md`
 - `docs/plan/plan-replit-deployment.md`
 
 #### report (리포트)
 - `docs/report/batch-analysis-observations.md`
+- `docs/report/client-server-mixed/architecture-analysis-and-improvement.md`
+- `docs/report/client-server-mixed/refactor-client-server.md`
 - `docs/report/implementation_status.md`
 - `docs/report/p0_gap_report.md`
 - `docs/report/pattern_definition_discussion.md`
+- `docs/report/slack-bot/README.md` - Mermaid 다이어그램 모음
+- `docs/report/slack-bot/slack-bot.md`
+- `docs/report/slack-bot/architecture-improvement-summary.md`
+- `docs/report/slack-bot/01-current-problems.mmd`
+- `docs/report/slack-bot/02-recommended-architecture.mmd`
+- `docs/report/slack-bot/03-data-flow.mmd`
+- `docs/report/slack-bot/04-options-comparison.mmd`
+- `docs/report/slack-bot/05-implementation-roadmap.mmd`
+- `docs/report/slack-bot/06-key-improvements.mmd`
 <!-- DOCS_LIST_END -->
 
 ### 기능 구현 시 참조 문서

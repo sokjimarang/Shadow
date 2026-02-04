@@ -1,0 +1,83 @@
+
+  %%{init: {'theme':'base', 'themeVariables': { 'fontSize':'14px'}}}%%
+  graph TB
+      subgraph "Slack Platform"
+          SlackApp[Slack App]
+          SlackAPI[Slack API<br/>chat.postMessage<br/>chat.update]
+      end
+
+      subgraph "shadow-web (Next.js - Vercel)"
+          subgraph "API Routes"
+              SlackEvents["/api/slack/events<br/>route.ts"]
+              SlackInteractions["/api/slack/interactions<br/>route.ts"]
+              ShadowProxy["/api/shadow/*<br/>Proxy Routes"]
+          end
+
+          SlackClientWeb["lib/slack/client.ts<br/>SlackClient"]
+          ShadowClientWeb["lib/shadow/client.ts<br/>ShadowClient"]
+          SupabaseWeb["Supabase Client<br/>(슬랙 이벤트/응답 저장)"]
+      end
+
+      subgraph "shadow-py (FastAPI - Local)"
+          subgraph "API Routers"
+              SlackRouter["api/routers/slack.py<br/>/slack/events<br/>/slack/interactivity"]
+              RecordingRouter["api/routers/recording.py<br/>/recording/*"]
+              AnalyzeRouter["api/routers/analyze.py<br/>/analyze"]
+          end
+
+          SlackClientPy["slack/client.py<br/>SlackClient<br/>(Bot Token)"]
+
+          subgraph "Core Services"
+              Recorder["capture/Recorder<br/>(화면 녹화)"]
+              Analyzer["analysis/ClaudeAnalyzer<br/>(Vision AI)"]
+              PatternDetector["patterns/PatternAnalyzer<br/>(패턴 감지)"]
+              HITLGen["hitl/QuestionGenerator<br/>(질문 생성)"]
+          end
+      end
+
+      subgraph "ngrok (Optional)"
+          NgrokTunnel["ngrok Tunnel<br/>localhost:8000 → Internet"]
+      end
+
+      %% Slack → shadow-web 인바운드 (이벤트)
+      SlackApp -->|"1⃣ Event Webhook<br/>POST /slack/events"| SlackEvents
+      SlackApp -->|"2⃣ Interaction Webhook<br/>POST /slack/interactions"| SlackInteractions
+
+      %% shadow-web 내부 처리
+      SlackEvents -->|서명 검증 & 이벤트 처리| SupabaseWeb
+      SlackEvents -->|패턴 분석 요청| ShadowClientWeb
+      SlackInteractions -->|응답 저장| SupabaseWeb
+
+      ShadowClientWeb -->|"HTTP 호출"| ShadowProxy
+
+      %% shadow-web → shadow-py 프록시
+      ShadowProxy -->|"3⃣ /analyze<br/>/patterns<br/>/recording/*"| RecordingRouter
+      ShadowProxy -.->|"또는 ngrok 경유"| NgrokTunnel
+      NgrokTunnel -.-> SlackRouter
+
+      %% shadow-py 내부 처리
+      RecordingRouter --> Recorder
+      AnalyzeRouter --> Analyzer
+      Analyzer --> PatternDetector
+      PatternDetector --> HITLGen
+
+      %% HITL 질문 전송
+      HITLGen -->|"4⃣ 질문 생성"| SlackClientPy
+      SlackClientWeb -->|"5⃣ Block Kit UI 메시지"| SlackAPI
+      SlackClientPy -->|"5⃣ 질문 전송<br/>(Bot Token)"| SlackAPI
+
+      %% 최종 사용자에게 전달
+      SlackAPI -->|"6⃣ 메시지 표시"| SlackApp
+
+      %% 사용자 응답
+      SlackApp -.->|"7⃣ 버튼 클릭<br/>(다시 2⃣로)"| SlackInteractions
+
+      classDef webClass fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+      classDef pyClass fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+      classDef slackClass fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+      classDef ngrokClass fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+
+      class SlackApp,SlackAPI slackClass
+      class SlackEvents,SlackInteractions,ShadowProxy,SlackClientWeb,ShadowClientWeb,SupabaseWeb webClass
+      class SlackRouter,RecordingRouter,AnalyzeRouter,SlackClientPy,Recorder,Analyzer,PatternDetector,HITLGen pyClass
+      class NgrokTunnel ngrokClass
