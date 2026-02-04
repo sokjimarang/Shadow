@@ -7,31 +7,26 @@ dependencies = [
     # 기존
     "fastapi>=0.128.0",
     "uvicorn>=0.40.0",
-
     # 설정
     "pydantic-settings>=2.0.0",
-
     # 화면 캡처 + 입력 이벤트
     "mss>=9.0.0",
     "pynput>=1.7.0",
     "pillow>=10.0.0",
-
     # Vision AI - Claude
     "anthropic>=0.40.0",
-
     # Vision AI - NVIDIA NIM (OpenAI 호환)
     "openai>=1.0.0",
-
     # 패턴 분석
     "numpy>=2.0.0",
     "python-levenshtein>=0.26.0",
-
     # 활성 윈도우 정보 (macOS 전용)
     "pyobjc-framework-Cocoa>=10.3.1; sys_platform == 'darwin'",
     "pyobjc-framework-Quartz>=10.3.1; sys_platform == 'darwin'",
-
     # Database
     "supabase>=2.0.0",
+    "slack-sdk>=3.39.0",
+    "python-dotenv>=1.2.1",
 ]
 
 [dependency-groups]
